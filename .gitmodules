@@ -1,3 +1,3 @@
 [submodule "src/ament_cmake"]
 	path = src/ament_cmake
-	url = git@github.com:PickNikRobotics/ament_cmake.git
+	url = https://github.com/PickNikRobotics/ament_cmake.git
