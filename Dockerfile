@@ -96,6 +96,57 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 # Set up the user's .bashrc file and shell.
 CMD ["/usr/bin/bash"]
 
+
+
+##################################################
+# Starting from the specified MoveIt Pro release with CUDA GPU #
+##################################################
+FROM base AS base-gpu
+
+# hadolint ignore=DL3002
+USER root
+
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+	--mount=type=cache,target=/var/lib/apt,sharing=locked \
+	apt-get update && \
+	apt-get install -y software-properties-common wget && \
+	add-apt-repository ppa:graphics-drivers/ppa && \
+	wget -q https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb && \
+	dpkg -i cuda-keyring_1.1-1_all.deb && \
+	wget https://developer.download.nvidia.com/compute/cuda/12.6.3/local_installers/cuda-repo-ubuntu2204-12-6-local_12.6.3-560.35.05-1_amd64.deb && \
+	dpkg -i cuda-repo-ubuntu2204-12-6-local_12.6.3-560.35.05-1_amd64.deb && \
+    cp /var/cuda-repo-ubuntu2204-12-6-local/cuda-*-keyring.gpg /usr/share/keyrings/ && \
+    apt-get update && \
+	apt-get install -y --no-install-recommends \
+    	cudnn \
+    	cudnn-cuda-12 \
+    	cuda-toolkit-12-6 \
+        libnvinfer10 \
+        libnvonnxparsers10 && \
+    apt-get clean && \
+	rm -rf /var/lib/apt/lists/*
+
+# Set up the user's .bashrc file and shell.
+CMD ["/usr/bin/bash"]
+
+#########################################
+# Target for compiled, deployable image with GPU support #
+#########################################
+FROM base-gpu AS user-overlay-gpu
+
+ARG USERNAME
+ARG USER_WS=/home/${USERNAME}/user_ws
+ENV USER_WS=${USER_WS}
+
+# Compile the workspace
+WORKDIR $USER_WS
+
+# Set up the user's .bashrc file and shell.
+CMD ["/usr/bin/bash"]
+
+
+
+
 #########################################
 # Target for compiled, deployable image #
 #########################################
