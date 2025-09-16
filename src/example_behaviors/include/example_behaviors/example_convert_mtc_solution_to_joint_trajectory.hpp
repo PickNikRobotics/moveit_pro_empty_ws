@@ -2,7 +2,7 @@
 
 #include <behaviortree_cpp/action_node.h>
 #include <behaviortree_cpp/bt_factory.h>
-#include <moveit/robot_model_loader/robot_model_loader.h>
+#include <moveit/robot_model_loader/robot_model_loader.hpp>
 #include <spdlog/spdlog.h>
 #include <yaml-cpp/yaml.h>
 #include <Eigen/Core>
