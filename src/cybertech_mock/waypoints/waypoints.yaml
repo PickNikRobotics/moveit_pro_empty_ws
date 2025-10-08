@@ -10,18 +10,18 @@
         nanosec: 0
         sec: 0
     name:
-    - J1
-    - J2
-    - J3
-    - J4
-    - J5
-    - J6
+    - joint_a1
+    - joint_a2
+    - joint_a3
+    - joint_a4
+    - joint_a5
+    - joint_a6
     position:
     - 0
+    - -1.57
+    - 1.57
     - 0
-    - 0
-    - 0
-    - -1.5707963267948966
+    - 1.57
     - 0
     velocity: []
   multi_dof_joint_state:
@@ -47,19 +47,19 @@
         nanosec: 0
         sec: 0
     name:
-    - J1
-    - J2
-    - J3
-    - J4
-    - J5
-    - J6
+    - joint_a1
+    - joint_a2
+    - joint_a3
+    - joint_a4
+    - joint_a5
+    - joint_a6
     position:
-    - 3.7844918614988473e-06
-    - 1.3540070791947846e-05
-    - 1.0643988666266522
-    - -8.179123169500716e-06
-    - -1.0308609221217246
-    - -1.2389843324801379e-05
+    - 0
+    - -1.57
+    - 0
+    - 0
+    - 0
+    - 0
     velocity: []
   multi_dof_joint_state:
     header:

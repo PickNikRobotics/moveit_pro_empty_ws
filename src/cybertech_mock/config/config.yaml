@@ -42,10 +42,10 @@ hardware:
     # [Optional]
     urdf_params:
       # If you'd like to use a different CYBERTECH model, enter it here!
-      # Possible names are xacro macros under package://kuka_kr#_support/urdf/.
-      - robot_model: "kr16"
-      - robot_ip: "192.168.1.100" # Unused but required.
-      - use_mock: "true"
+      - robot_name: "kuka_cybertech"
+      - description_package: "kuka_kr16_support"
+      - description_macro_file: "kr16_2_macro.xacro"
+      - use_mock_hardware: "true"
 
 # Sets ROS global params for launch.
 # [Optional]

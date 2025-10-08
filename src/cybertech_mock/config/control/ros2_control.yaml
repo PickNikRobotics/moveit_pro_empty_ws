@@ -13,12 +13,12 @@ controller_manager:
 joint_trajectory_controller:
   ros__parameters:
     joints:
-      - J1
-      - J2
-      - J3
-      - J4
-      - J5
-      - J6
+      - joint_a1
+      - joint_a2
+      - joint_a3
+      - joint_a4
+      - joint_a5
+      - joint_a6
     command_interfaces:
       - position
     state_interfaces:
@@ -31,34 +31,34 @@ joint_trajectory_controller:
     constraints:
       stopped_velocity_tolerance: 0.0
       goal_time: 0.0
-      J1:
+      joint_a1:
         goal: 0.05
         trajectory: 0.25
-      J2:
+      joint_a2:
         goal: 0.05
         trajectory: 0.25
-      J3:
+      joint_a3:
         goal: 0.05
         trajectory: 0.25
-      J4:
+      joint_a4:
         goal: 0.05
         trajectory: 0.25
-      J5:
+      joint_a5:
         goal: 0.05
         trajectory: 0.25
-      J6:
+      joint_a6:
         goal: 0.05
         trajectory: 0.25
 
 servo_controller:
   ros__parameters:
     joints:
-      - J1
-      - J2
-      - J3
-      - J4
-      - J5
-      - J6
+      - joint_a1
+      - joint_a2
+      - joint_a3
+      - joint_a4
+      - joint_a5
+      - joint_a6
     command_interfaces:
       - position
     state_interfaces:
@@ -69,17 +69,17 @@ servo_controller:
     constraints:
       stopped_velocity_tolerance: 0.0
       goal_time: 0.0
-      J1:
+      joint_a1:
         goal: 0.05
-      J2:
+      joint_a2:
         goal: 0.05
-      J3:
+      joint_a3:
         goal: 0.05
-      J4:
+      joint_a4:
         goal: 0.05
-      J5:
+      joint_a5:
         goal: 0.05
-      J6:
+      joint_a6:
         goal: 0.05
 
 velocity_force_controller:

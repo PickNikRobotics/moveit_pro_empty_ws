@@ -33,6 +33,14 @@ def generate_launch_description():
                     "kuka_cybertech.urdf.xacro",
                 ]
             ),
+            " robot_name:=",
+            "kuka_cybertech",
+            " description_package:=",
+            "kuka_kr16_support",
+            " description_macro_file:=",
+            "kr16_2_macro.xacro",
+            " use_mock_hardware:=",
+            "true",
         ]
     )
     robot_description = {"robot_description": robot_description_content}
