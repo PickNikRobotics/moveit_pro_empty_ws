@@ -2,6 +2,12 @@
 build:
   # Enable this for bidirectional syncing from the UI
   symlink-install: true
+  allow-overriding:
+    - ewellix_description
+    - franka_description
+    - kortex_description
+    - robotiq_description
+    - ur_description
   mixin:
     # Enable ccache support
     - ccache
