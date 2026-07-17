@@ -832,7 +832,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: PickNikRobotics/moveit_pro_lint@v0.0.1
+      - uses: PickNikRobotics/moveit_pro_lint@v0.0.2
 
   # Single aggregator job that branch protection requires. Lists every job
   # that must succeed (or be intentionally skipped) for a PR to be mergeable;
