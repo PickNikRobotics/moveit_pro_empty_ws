@@ -1,0 +1,3 @@
+[submodule "src/so101-ros-physical-ai"]
+	path = src/so101-ros-physical-ai
+	url = https://github.com/legalaspro/so101-ros-physical-ai.git

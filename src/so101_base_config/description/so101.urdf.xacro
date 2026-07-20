@@ -1,0 +1,53 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="so101">
+  <!--
+    MoveIt Pro wrapper URDF for the SO-101 (LeRobot) follower arm + gripper.
+
+    It pulls the arm and end-effector geometry from the upstream so101_description
+    package (added as a git submodule), adds the world frame MoveIt Pro requires as
+    the TF root, defines a motion-planning grasp_link, and attaches a ros2_control
+    block. The base config uses mock hardware; hardware_type is exposed so the
+    physical config can override it.
+  -->
+
+  <!-- Hardware selection (mock for this base config) -->
+  <xacro:arg name="hardware_type" default="mock"/>
+
+  <!-- World frame: MoveIt Pro expects a `world` link as the TF root. -->
+  <link name="world"/>
+  <joint name="world_fixed" type="fixed">
+    <parent link="world"/>
+    <child link="base_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- Upstream SO-101 description macros -->
+  <xacro:include filename="$(find so101_description)/urdf/so101_macros.xacro"/>
+  <xacro:include filename="$(find so101_description)/urdf/so101_materials.xacro"/>
+  <xacro:include filename="$(find so101_description)/urdf/so101_arm_common.xacro"/>
+  <xacro:include filename="$(find so101_description)/urdf/end_effectors/so101_ee_common.xacro"/>
+  <xacro:include filename="$(find so101_description)/urdf/end_effectors/so101_ee_follower.xacro"/>
+
+  <!-- Materials, arm links/joints, and the follower end effector (gripper) -->
+  <xacro:so101_materials/>
+  <xacro:so101_arm_common mesh_dir="package://so101_description/meshes" add_transmissions="false"/>
+  <xacro:so101_ee_follower mesh_dir="package://so101_description/meshes" add_transmissions="false"/>
+
+  <!--
+    grasp_link: the motion-planning tool center point. Mirrors the transform of
+    the upstream gripper_frame_link so its +Z points out of the tool, following
+    the MoveIt Pro "Z-out-of-tool" convention required by pose jog and the
+    admittance/velocity-force behaviors. Parented directly under the tool flange
+    (gripper_link) so the gripper group's base frame resolves at the wrist.
+  -->
+  <link name="grasp_link"/>
+  <joint name="grasp_link_joint" type="fixed">
+    <parent link="gripper_link"/>
+    <child link="grasp_link"/>
+    <origin xyz="-0.0079 -0.000218121 -0.0981274" rpy="0 3.14159 0"/>
+  </joint>
+
+  <!-- ros2_control (mock GenericSystem for the base config) -->
+  <xacro:include filename="so101.ros2_control.xacro"/>
+  <xacro:so101_ros2_control name="SO101Base"/>
+</robot>

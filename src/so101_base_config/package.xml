@@ -1,0 +1,25 @@
+<?xml version="1.0" ?>
+<package format="3">
+  <name>so101_base_config</name>
+  <version>0.1.0</version>
+
+  <description>
+    Base (mock hardware) MoveIt Pro configuration package for the SO-101 (LeRobot)
+    5-DOF arm with parallel-jaw gripper, driven by Feetech STS3215 bus servos.
+  </description>
+
+  <maintainer email="jonathan.fries@picknik.ai">Jonathan Fries</maintainer>
+
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <exec_depend>moveit_ros_perception</exec_depend>
+  <exec_depend>moveit_studio_agent</exec_depend>
+  <exec_depend>moveit_pro_behavior</exec_depend>
+  <exec_depend>so101_description</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <!--
+    ros2_control block for the SO-101 base (mock) config.
+
+    This base config uses mock_components/GenericSystem so it runs with no real
+    hardware attached: every position command is echoed straight back as the
+    position state. The physical config (added later) swaps this out for the
+    Feetech STS3215 hardware interface (feetech_ros2_driver) via config
+    inheritance.
+
+    All six joints (5 arm + 1 gripper) expose a position command interface and
+    position + velocity state interfaces, matching what the JTAC, JVC, VFC, and
+    GripperActionController expect.
+  -->
+  <xacro:macro name="so101_ros2_control" params="name">
+    <ros2_control name="${name}" type="system">
+      <hardware>
+        <plugin>mock_components/GenericSystem</plugin>
+      </hardware>
+
+      <xacro:macro name="so101_mock_joint" params="joint_name initial:=0.0">
+        <joint name="${joint_name}">
+          <command_interface name="position"/>
+          <state_interface name="position">
+            <param name="initial_value">${initial}</param>
+          </state_interface>
+          <state_interface name="velocity"/>
+        </joint>
+      </xacro:macro>
+
+      <!-- Arm joints -->
+      <xacro:so101_mock_joint joint_name="shoulder_pan"  initial="0.0"/>
+      <xacro:so101_mock_joint joint_name="shoulder_lift" initial="0.0"/>
+      <xacro:so101_mock_joint joint_name="elbow_flex"    initial="0.0"/>
+      <xacro:so101_mock_joint joint_name="wrist_flex"    initial="0.0"/>
+      <xacro:so101_mock_joint joint_name="wrist_roll"    initial="0.0"/>
+
+      <!-- Gripper joint -->
+      <xacro:so101_mock_joint joint_name="gripper"       initial="0.0"/>
+    </ros2_control>
+  </xacro:macro>
+</robot>

@@ -1,0 +1,5 @@
+# No 3D sensors on the SO-101 base config.
+# Do NOT add an empty `sensors: []` list — ROS 2 parameters cannot represent an
+# empty list and the launch system crashes on it. Keep only the octomap keys.
+octomap_resolution: 0.01
+octomap_frame: "world"

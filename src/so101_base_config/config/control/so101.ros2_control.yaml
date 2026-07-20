@@ -1,0 +1,108 @@
+controller_manager:
+  ros__parameters:
+    update_rate: 100  # Hz
+
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+    joint_trajectory_admittance_controller:
+      type: joint_trajectory_admittance_controller/JointTrajectoryAdmittanceController
+
+    gripper_controller:
+      type: position_controllers/GripperActionController
+
+    joint_velocity_controller:
+      type: joint_velocity_controller/JointVelocityController
+
+    velocity_force_controller:
+      type: velocity_force_controller/VelocityForceController
+
+# Trajectory execution over the 5 arm joints. No F/T sensor on the SO-101, so
+# ft_sensor_name is empty and JTAC falls back to plain trajectory control.
+joint_trajectory_admittance_controller:
+  ros__parameters:
+    planning_group_name: manipulator
+    sensor_frame: gripper_link
+    ee_frame: grasp_link
+    ft_sensor_name: ""
+    stop_accelerations:
+      - 30.0
+      - 30.0
+      - 30.0
+      - 30.0
+      - 30.0
+    default_path_tolerance: 0.5
+
+# Single-jaw parallel gripper.
+gripper_controller:
+  ros__parameters:
+    default: true
+    joint: gripper
+    allow_stalling: true
+    stall_timeout: 0.05
+    goal_tolerance: 0.02
+
+# Joint-space teleop (joint jog).
+joint_velocity_controller:
+  ros__parameters:
+    planning_group_name: manipulator
+    command_interfaces: ["position"]
+    max_joint_velocity:
+      - 1.0
+      - 1.0
+      - 1.0
+      - 1.0
+      - 1.0
+    max_joint_acceleration:
+      - 3.0
+      - 3.0
+      - 3.0
+      - 3.0
+      - 3.0
+    joint_limit_position_tolerance: 0.02
+    command_timeout: 0.2
+    state_publish_rate: 20
+
+# Cartesian-space teleop (pose jog). No F/T sensor, so ft params are zeroed.
+# Note: the SO-101 is a 5-DOF arm, so full 6-DOF Cartesian jog is not always
+# achievable; joint jog and trajectory execution are the primary motion paths.
+velocity_force_controller:
+  ros__parameters:
+    planning_group_name: manipulator
+    sensor_frame: grasp_link
+    ee_frame: grasp_link
+    ft_sensor_name: ""
+    ft_force_deadband: 0.0
+    ft_torque_deadband: 0.0
+    stop_accelerations:
+      - 30.0
+      - 30.0
+      - 30.0
+      - 30.0
+      - 30.0
+    max_joint_velocity:
+      - 1.0
+      - 1.0
+      - 1.0
+      - 1.0
+      - 1.0
+    max_joint_acceleration:
+      - 2.0
+      - 2.0
+      - 2.0
+      - 2.0
+      - 2.0
+    max_cartesian_velocity:
+      - 0.25
+      - 0.25
+      - 0.25
+      - 1.0
+      - 1.0
+      - 1.0
+    max_cartesian_acceleration:
+      - 2.0
+      - 2.0
+      - 2.0
+      - 4.0
+      - 4.0
+      - 4.0
