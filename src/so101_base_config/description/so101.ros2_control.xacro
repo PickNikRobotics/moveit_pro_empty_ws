@@ -29,11 +29,12 @@
         </joint>
       </xacro:macro>
 
-      <!-- Arm joints -->
+      <!-- Arm joints. initial_value = the Home pose so mock boots there
+           (kept in sync with the SRDF home group_state and the Home waypoint). -->
       <xacro:so101_mock_joint joint_name="shoulder_pan"  initial="0.0"/>
-      <xacro:so101_mock_joint joint_name="shoulder_lift" initial="0.0"/>
-      <xacro:so101_mock_joint joint_name="elbow_flex"    initial="0.0"/>
-      <xacro:so101_mock_joint joint_name="wrist_flex"    initial="0.0"/>
+      <xacro:so101_mock_joint joint_name="shoulder_lift" initial="0.6"/>
+      <xacro:so101_mock_joint joint_name="elbow_flex"    initial="-1.0"/>
+      <xacro:so101_mock_joint joint_name="wrist_flex"    initial="-0.6"/>
       <xacro:so101_mock_joint joint_name="wrist_roll"    initial="0.0"/>
 
       <!-- Gripper joint -->

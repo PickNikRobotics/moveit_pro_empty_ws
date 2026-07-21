@@ -8,7 +8,7 @@
       <Action
         ID="MoveGripperAction"
         gripper_command_action_name="/gripper_controller/gripper_cmd"
-        position="0.1"
+        position="-0.1"
         timeout="15.000000"
       />
     </Control>
