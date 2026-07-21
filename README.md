@@ -18,8 +18,9 @@ The base config is the foundation; the physical config will inherit from it via
 
 The URDF, meshes, and end-effector xacros come from the upstream
 [`so101-ros-physical-ai`](https://github.com/legalaspro/so101-ros-physical-ai)
-project (`so101_description` package), included here as a git submodule under
-`src/so101-ros-physical-ai/`. We build the **follower** variant (the actuated arm).
+project. Its `so101_description` package is vendored here (tracked, meshes via
+git-LFS) at `src/so101_description/`. We build the **follower** variant (the
+actuated arm).
 
 The MoveIt Pro wrapper (`src/so101_base_config/description/so101.urdf.xacro`) adds
 the `world` TF root, a `grasp_link` tool-center-point frame, and a ros2_control
@@ -28,8 +29,8 @@ block.
 ## Setup
 
 ```bash
-# Clone with submodules (the robot description lives in a submodule)
-git clone --recurse-submodules https://github.com/PickNikRobotics/moveit_pro_so-101_ws.git
+# Clone (git-LFS is required for the mesh files)
+git clone https://github.com/PickNikRobotics/moveit_pro_so-101_ws.git
 cd moveit_pro_so-101_ws
 
 # Point MoveIt Pro at this workspace and the base config
