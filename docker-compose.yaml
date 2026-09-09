@@ -18,9 +18,6 @@ services:
       # Allow access to host hardware e.g. RealSense cameras
       - /dev:/dev
 
-  # Starts the web UI frontend.
-  web_ui: {}
-
   # Developer specific configuration when running `moveit_pro dev`.
   dev:
     volumes:
