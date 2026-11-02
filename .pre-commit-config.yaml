@@ -88,3 +88,15 @@ repos:
           - "prettier@3.1.0"
           - "@prettier/plugin-xml@3.3.1"
         files: \.(xml)$
+
+  - repo: local
+    hooks:
+      - id: no-coverage-mixins
+        name: Keep coverage mixins out of the workspace colcon defaults
+        description: >-
+          The MoveIt Pro image ships without pytest-cov, so coverage-pytest
+          makes every ament_add_pytest_test warn. Opt in through
+          COLCON_DEFAULTS_FILE instead.
+        entry: '^\s*-\s*coverage-'
+        language: pygrep
+        files: ^colcon-defaults\.yaml$
