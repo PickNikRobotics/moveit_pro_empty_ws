@@ -88,3 +88,13 @@ repos:
           - "prettier@3.1.0"
           - "@prettier/plugin-xml@3.3.1"
         files: \.(xml)$
+
+  - repo: local
+    hooks:
+      - id: no-coverage-mixins
+        name: Keep coverage mixins out of the workspace colcon defaults
+        description: Coverage stays off in the template. Opt in through COLCON_DEFAULTS_FILE.
+        # Matches coverage- anywhere outside a comment, including quoted and flow-style entries.
+        entry: '^[^#]*coverage-'
+        language: pygrep
+        files: ^colcon-defaults\.yaml$
