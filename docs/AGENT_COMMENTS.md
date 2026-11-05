@@ -129,3 +129,10 @@ by line. Keep each entry short, and keep it true when the code changes.
 - **rosdep `--skip-keys catkin`.** The vendored `ugv_sdk` declares ROS 1's
   catkin as its build tool. Jazzy has no rosdep key for it, and its CMake
   builds without catkin.
+
+## colcon.meta
+
+- **`ugv_sdk` tests off.** The workspace builds with tests on. `ugv_sdk` then
+  needs its nested `test/googletest` submodule, which is empty unless the clone
+  is fully recursive. colcon reads this file from the workspace root, so the
+  vendored package stays unchanged.

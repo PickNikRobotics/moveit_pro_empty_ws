@@ -1,0 +1,7 @@
+{
+  "names": {
+    "ugv_sdk": {
+      "cmake-args": ["-DBUILD_TESTING=OFF"]
+    }
+  }
+}
