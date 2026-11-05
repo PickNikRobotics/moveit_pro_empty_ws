@@ -28,3 +28,10 @@ hardware:
   additional_driver_launch_file:
     package: "agilex_ranger_mini_hw"
     path: "launch/hw_drivers.launch.py"
+
+objectives:
+  # The planar joints hold wheel odometry from the power-on spot, so the
+  # inherited map-place waypoints would be a blind move across the room.
+  waypoints_file:
+    package_name: "agilex_ranger_mini_hw"
+    relative_path: "waypoints/agilex_ranger_mini_hw_waypoints.yaml"

@@ -18,7 +18,9 @@
   <exec_depend>agilex_ranger_mini_sim</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>
   <exec_depend>joint_state_topic_hardware_interface</exec_depend>
+  <exec_depend>nav2_common</exec_depend>
   <exec_depend>nav_msgs</exec_depend>
+  <exec_depend>python3-yaml</exec_depend>
   <exec_depend>ranger_base</exec_depend>
   <exec_depend>rclpy</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>
@@ -26,6 +28,9 @@
   <test_depend>agilex_ranger_mini_mock</test_depend>
   <test_depend>ament_cmake_pytest</test_depend>
   <test_depend>ament_index_python</test_depend>
+  <test_depend>builtin_interfaces</test_depend>
+  <test_depend>launch</test_depend>
+  <test_depend>launch_ros</test_depend>
   <test_depend>python3-pytest</test_depend>
   <test_depend>python3-yaml</test_depend>
   <test_depend>xacro</test_depend>

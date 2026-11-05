@@ -1,5 +1,5 @@
 # Nav2 for the AgileX Ranger Mini, an omnidirectional base. Shared by the mock,
-# sim and hw configs through launch/nav2.launch.py.
+# sim and hw configs through launch/navigation.launch.py.
 #
 # Frames: map -> odom (AMCL), odom -> world (static), world -> base_link (the
 # planar joints). The final velocity goes to /base_cmd_vel, which
@@ -49,7 +49,7 @@ amcl:
     tf_broadcast: true
     transform_tolerance: 1.0
     always_reset_initial_pose: false
-    # Seeded at the spawn pose in config/initial_positions.yaml. The hw launch turns the seed off.
+    # Seeded at the spawn pose in config/initial_positions.yaml. The hw launch reseeds at its boot pose.
     set_initial_pose: true
     initial_pose:
       x: 5.0
@@ -60,7 +60,7 @@ amcl:
 map_server:
   ros__parameters:
     use_sim_time: false
-    # Replaced by launch/nav2.launch.py with the map it is given.
+    # Replaced by launch/navigation.launch.py with the map it is given.
     yaml_filename: ""
 
 bt_navigator:
@@ -135,7 +135,7 @@ controller_server:
           "GoalAngleCritic",
           "PathAlignCritic",
           "PathFollowCritic",
-          "PathAngleCritic",
+          "TwirlingCritic",
         ]
       ConstraintCritic:
         enabled: true
@@ -176,15 +176,11 @@ controller_server:
         cost_weight: 5.0
         offset_from_furthest: 5
         threshold_to_consider: 1.4
-      PathAngleCritic:
+      # The base need not face its path; GoalAngleCritic asks only for the final heading.
+      TwirlingCritic:
         enabled: true
         cost_power: 1
-        cost_weight: 2.0
-        offset_from_furthest: 4
-        threshold_to_consider: 0.5
-        max_angle_to_furthest: 1.0
-        # The base can drive in any direction, so the path heading need not be followed.
-        mode: 0
+        cost_weight: 10.0
 
 local_costmap:
   local_costmap:

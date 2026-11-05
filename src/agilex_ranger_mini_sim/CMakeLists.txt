@@ -13,13 +13,6 @@ install(
     share/${PROJECT_NAME}
 )
 
-install(
-  PROGRAMS
-    scripts/generate_mjcf.py
-  DESTINATION
-    lib/${PROJECT_NAME}
-)
-
 if(BUILD_TESTING)
   find_package(ament_cmake_pytest REQUIRED)
   ament_add_pytest_test(sim_model_test test/test_sim_model.py TIMEOUT 120)

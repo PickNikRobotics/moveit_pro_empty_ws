@@ -25,6 +25,14 @@ Mock and sim:
 The base is three planar joints, x, y and yaw. Every controller commands their
 velocity, so only one runs at a time; the Objectives switch between them.
 
+## Known limit on the real robot
+
+The pinned AgileX driver ignores the requested turn whenever the sideways
+speed is not zero. Nav2's MPPI model and pose jog can ask for both at once, so
+the turn may be lost on the physical base. This setup is kept as is, and the
+robot's own behaviour is untested. See the
+[hw README](src/agilex_ranger_mini_hw/README.md#known-limits).
+
 ## Build and run
 
 Build the user workspace, then run one config:
@@ -46,7 +54,7 @@ Its test fails when they are stale.
 
 This repository is BSD-3-Clause ([LICENSE](LICENSE)). External dependencies and
 their licences are listed in [NOTICE](NOTICE); their licence texts are in
-`src/external_dependencies/licenses/`. The AgileX meshes have no clear licence:
-see NOTICE before redistributing.
+`src/external_dependencies/licenses/`. The AgileX meshes are included with an
+unclear licence: see NOTICE.
 
 For more information, refer to the [MoveIt Pro Documentation](https://docs.picknik.ai/).

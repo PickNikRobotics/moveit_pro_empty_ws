@@ -70,3 +70,15 @@ def test_cast_rays_turns_with_the_sensor():
         grid, 0.1, (0.0, 0.0), (5.0, 5.0, math.pi / 2), np.array([0.0]), 0.05, 10.0
     )
     assert abs(ranges[0] - 3.0) <= 0.1
+
+
+def test_lidar_ignores_a_joint_state_without_positions():
+    class Holder:
+        _pose = None
+
+    names = ["linear_x_joint", "linear_y_joint", "rotational_yaw_joint"]
+    holder = Holder()
+    lidar.MockLidar._on_joints(holder, FakeJointState(names, [1.0], []))
+    assert holder._pose is None
+    lidar.MockLidar._on_joints(holder, FakeJointState(names, [1.0, 2.0, 0.5], []))
+    assert holder._pose == (1.0, 2.0, 0.5)

@@ -3,10 +3,9 @@
   <name>agilex_ranger_mini_mock</name>
   <version>0.1.0</version>
   <description>
-    MoveIt Pro configuration for the AgileX Ranger Mini v3 omnidirectional base
-    on
-    mock hardware: the robot description, controllers, teleoperation and Nav2.
-    The sim and hw configs inherit from it.
+    MoveIt Pro configuration for the AgileX Ranger Mini v3 omnidirectional
+    base on mock hardware: the robot description, controllers, teleoperation
+    and Nav2. The sim and hw configs inherit from it.
   </description>
 
   <maintainer email="support@picknik.ai">MoveIt Pro Maintainer</maintainer>
@@ -21,6 +20,7 @@
   <exec_depend>joint_trajectory_controller</exec_depend>
   <exec_depend>joint_velocity_controller</exec_depend>
   <exec_depend>moveit_pro_behavior</exec_depend>
+  <exec_depend>moveit_pro_objectives</exec_depend>
   <exec_depend>moveit_studio_agent</exec_depend>
   <exec_depend>nav2_amcl</exec_depend>
   <exec_depend>nav2_behaviors</exec_depend>

@@ -72,13 +72,20 @@ by line. Keep each entry short, and keep it true when the code changes.
 ## src/agilex_ranger_mini_mock/params/nav2_params.yaml
 
 - **AMCL.** The omni motion model matches the base. The odometry noise
-  `alpha1-5` is low because mock and sim odometry is exact; raise it on hw.
+  `alpha1-5` is low because mock and sim odometry is exact. The hw launch
+  raises it and moves the seed to the hw boot pose.
 - **Planners.** NavFn keeps the id `GridBased`, which Nav2's default navigate
   tree uses. SMAC 2D is the SMAC variant for a base that moves in any
   direction: Hybrid-A* assumes a car, and the State Lattice needs a motion
   primitive file.
-- **MPPI.** The Omni model samples x, y and yaw independently. `PathAngleCritic`
-  mode 0 lets the base drive in any direction along the path.
+- **MPPI.** The Omni model samples x, y and yaw independently. There is no
+  `PathAngleCritic`: every mode of it asks the base to face along the path,
+  which an omnidirectional base need not do. `TwirlingCritic` penalises
+  needless turning instead, and `GoalAngleCritic` sets the final heading.
+- **Arrival.** The goal checker is stateful and the base now holds its
+  heading, so it stops as soon as it enters the xy tolerance circle. Measured
+  against the true pose it can end just outside that circle, by about the
+  AMCL error.
 - **Velocity.** Nav2's final twist goes to `/base_cmd_vel`, not `/cmd_vel`,
   because on hw the AgileX driver owns `/cmd_vel` before its remap.
 
@@ -113,16 +120,72 @@ by line. Keep each entry short, and keep it true when the code changes.
 
 ## src/agilex_ranger_mini_hw/scripts/ranger_driver_bridge.py
 
-- **Driver modes.** `ranger_base` (`ranger_messenger.cpp`, `TwistCmdCallback`)
-  picks one firmware mode per twist. Any sideways speed selects the oblique
-  mode, which ignores the turn rate. Otherwise a small turn radius selects spin
-  mode and a large one Ackermann. MPPI's Omni model can ask for both at once;
-  if that misbehaves on the robot, lower `wz_max` or `vy_max` in MPPI for hw.
-- **Speed caps.** The driver clips speed and turn rate below the manual's
-  ceilings (`RangerMiniV3Params`).
+- **Driver modes.** `ranger_base` (`ranger_messenger.cpp`, `TwistCmdCallback`,
+  at the pinned commit) picks one mode per twist. Any non-zero `linear.y`
+  selects the parallel mode, which sends speed and steering angle and never
+  reads `angular.z`. With zero `linear.y`, a small turn radius selects spin
+  mode and a large one Ackermann. The pinned callback therefore drops the turn
+  whenever sideways speed is non-zero. That is a limit of this ROS command
+  path. What the firmware and hardware do with combined motion is UNVERIFIED.
+- **Setup kept as is.** MPPI's Omni model can ask for both at once, and hw
+  uses the same MPPI and pose-jog settings as mock and sim. No threshold, Nav2
+  restriction or bridge policy hides this; the README lists it as a known limit.
+- **Heading history.** A body twist becomes world rates in a controller or in
+  `planar_base_bridge.py`, with a heading this node published earlier, and
+  comes back here as world rates. Read with a newer heading, a
+  forward-and-turn command would gain a small `vy` and select the parallel
+  mode. So `driver_twist` tries the recent published headings and keeps the
+  one that leaves an axis at rounding level, then sets that axis to exactly
+  zero. No delay is assumed. The heading must be among the last
+  `heading_history` published ones and within a quarter turn of the newest.
+  The real delay on the robot is not measured.
+- **World-frame commands.** The match runs on every command, including joint
+  jog and joint trajectories, which no heading built. If a retained heading
+  leaves a body axis at rounding level, the command is sent along that heading.
+  In practice that is the boot heading in the first `heading_history` odometry
+  messages after the base first turns, with a direction error up to the heading
+  change. Not changed on purpose; the test
+  `test_world_frame_command_can_match_an_older_heading` pins it. Whether the
+  joint jog leaves unused axes at exactly zero is UNVERIFIED.
+- **Why not a deadband.** A speed threshold would need an assumed delay and
+  would also erase real small sideways commands. A command with real forward
+  and sideways parts matches no heading, is rotated with the newest heading and
+  keeps both parts.
+- **What still loses the turn.** A replay of mock `/joint_states` through
+  `driver_twist` matched pure sideways pose jog at a retained heading. Diagonal
+  pose jog kept both parts, rotated with the newest heading, so its original
+  body direction is not recovered exactly when it was built from an older
+  heading. Forward-and-turn pose jog was not matched: the velocity-force
+  controller output keeps a small sideways part at every published heading.
+  MPPI's Omni output has real sideways speed while it turns. The driver drops
+  the turn for both; no policy is applied.
+- **Quarter-turn guard.** A quarter turn swaps the axes and a half turn
+  reverses the command, so candidates stop a quarter turn from the newest.
+  This also limits how far back a command can match.
+- **Non-finite commands.** A ros2_control command is NaN until a controller
+  writes it, and the topic interface forwards it. The joints xacro starts the
+  commands at zero, and `driver_twist` stops the base on any NaN or inf.
+- **Speed caps.** `RangerMiniV3Params` caps only some driver modes, and its
+  turn-rate cap is above the manual's. So the bridge clamps to the URDF
+  limits of the planar joints.
+- **Publish period.** ros2_control writes every cycle, faster than the driver
+  updates, and the driver re-selects its mode per message. The bridge passes
+  at most one twist per period, stops included; only the first stop after
+  motion goes through at once.
+- **Odometry.** A message with any non-finite value is dropped before it can
+  poison the unwrapped heading.
 - **Command layout.** `JointStateTopicSystem` lists every joint name but only
   the commanded values, in joint order. The planar joints come first, so the
   first three velocities belong to them.
+
+## src/agilex_ranger_mini_hw/launch/hw_drivers.launch.py
+
+- **AMCL rewrites.** The hw config shares the mock's Nav2 file, then rewrites
+  AMCL by full key path: the seed comes from the hw boot pose and the odometry
+  noise goes up to Nav2's default. Full paths keep the rewrite away from any
+  other key with the same leaf name.
+- **Arguments.** MoveIt Pro includes an `additional_driver_launch_file` with no
+  arguments, so each setting is changed by editing its default value.
 
 ## Dockerfile
 

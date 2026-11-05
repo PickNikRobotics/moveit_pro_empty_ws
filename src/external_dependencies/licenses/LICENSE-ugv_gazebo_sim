@@ -14,6 +14,7 @@ meshes, ranger_mini/ranger_mini_v3/package.xml, which declares:
 
 with author "TODO". It names no BSD variant and no copyright holder.
 
-The files are vendored unmodified so the robot model shows the real body. Get
-written permission from AgileX Robotics, or replace these meshes with primitive
-shapes, before redistributing this workspace outside PickNik.
+The files are vendored unmodified so the robot model shows the real body. They
+are included and distributed as-is with the licence recorded as unclear. A user
+who needs a clear licence can ask AgileX Robotics, or replace the meshes with
+primitive shapes in agilex_ranger_mini_mock/description/agilex_ranger_mini_macro.xacro.

@@ -100,8 +100,9 @@ class MockLidar(Node):
 
     def _on_joints(self, msg):
         index = {name: i for i, name in enumerate(msg.name)}
-        if all(name in index for name in PLANAR_JOINTS):
-            self._pose = tuple(msg.position[index[name]] for name in PLANAR_JOINTS)
+        ids = [index.get(name) for name in PLANAR_JOINTS]
+        if None not in ids and max(ids) < len(msg.position):
+            self._pose = tuple(msg.position[i] for i in ids)
 
     def _tick(self):
         if self._map is None or self._pose is None:

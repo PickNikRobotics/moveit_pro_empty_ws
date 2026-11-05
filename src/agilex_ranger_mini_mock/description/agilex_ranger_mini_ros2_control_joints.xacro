@@ -18,7 +18,10 @@
   <xacro:macro name="agilex_ranger_mini_ros2_control_joints" params="initial_positions">
     <xacro:macro name="agilex_ranger_mini_planar_joint" params="joint_name">
       <joint name="${joint_name}">
-        <command_interface name="velocity" />
+        <!-- Unset commands start as NaN, which the hw interface would forward. -->
+        <command_interface name="velocity">
+          <param name="initial_value">0.0</param>
+        </command_interface>
         <state_interface name="position">
           <param name="initial_value">${initial_positions[joint_name]}</param>
         </state_interface>
