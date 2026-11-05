@@ -1,7 +1,52 @@
-# MoveIt Pro Workspace
+# AgileX Ranger Mini for MoveIt Pro
 
-This is a minimal user workspace that can be used to build customized MoveIt Pro workspaces.
+MoveIt Pro configuration packages for the AgileX Ranger Mini v3, a four-wheel
+independent steering base that can drive in any direction.
 
-You may fork this repository and add the MoveIt Pro configurations and ROS 2 packages of your choosing to the `src` folder.
+| Package | Hardware | Status |
+| --- | --- | --- |
+| `agilex_ranger_mini_mock` | ros2_control mock hardware | Base of the chain: robot description, controllers, Objectives, Nav2 |
+| `agilex_ranger_mini_sim` | MoveIt Pro MuJoCo simulator, suite_106 room | Inherits from mock |
+| `agilex_ranger_mini_hw` | Physical base over CAN, AgileX `ranger_base` driver | Inherits from sim. **Untested on hardware**: read [its README](src/agilex_ranger_mini_hw/README.md) |
+
+Each child overrides only its hardware. Robot semantics live in the mock package.
+
+## What the configs support
+
+Mock and sim:
+
+- Teleoperation of the base from the UI: waypoints, IMarker, pose jog and joint jog
+  (the `Teleoperate` Objective).
+- Nav2 on the suite_106 map: AMCL localization (`Localize Robot`), NavFn
+  (`Navigate to Clicked Point with NavFn`) and SMAC 2D
+  (`Navigate to Clicked Point with SMAC`) global planners, and the MPPI
+  controller with its omnidirectional motion model.
+
+The base is three planar joints, x, y and yaw. Every controller commands their
+velocity, so only one runs at a time; the Objectives switch between them.
+
+## Build and run
+
+Build the user workspace, then run one config:
+
+```bash
+git clone --recurse-submodules <this repository> ~/agilex_ws
+moveit_pro build user_workspace -w ~/agilex_ws
+moveit_pro run -c agilex_ranger_mini_sim -w ~/agilex_ws
+```
+
+Use `-c agilex_ranger_mini_mock` for mock hardware. The meshes are stored with
+Git LFS, so run `git lfs pull` if the robot shows no body.
+
+To change the robot model or the map, edit the mock package and regenerate the
+sim's MuJoCo files with `scripts/generate_mjcf.py` in `agilex_ranger_mini_sim`.
+Its test fails when they are stale.
+
+## Licensing
+
+This repository is BSD-3-Clause ([LICENSE](LICENSE)). External dependencies and
+their licences are listed in [NOTICE](NOTICE); their licence texts are in
+`src/external_dependencies/licenses/`. The AgileX meshes have no clear licence:
+see NOTICE before redistributing.
 
 For more information, refer to the [MoveIt Pro Documentation](https://docs.picknik.ai/).
