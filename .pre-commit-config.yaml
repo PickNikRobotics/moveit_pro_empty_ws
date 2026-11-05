@@ -21,6 +21,7 @@ repos:
       - id: check-case-conflict
       - id: check-docstring-first
       - id: check-merge-conflict
+      - id: check-shebang-scripts-are-executable
       - id: check-symlinks
       - id: check-yaml
         args: ["--unsafe"] # Fixes errors parsing custom YAML constructors like ur_description's !degrees
