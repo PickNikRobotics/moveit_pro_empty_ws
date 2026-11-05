@@ -1,0 +1,25 @@
+AgileX Ranger Mini for MoveIt Pro
+Copyright (c) 2026 PickNik Inc. Licensed under the BSD 3-Clause License (LICENSE).
+
+This repository includes the following external dependencies, unmodified, under
+src/external_dependencies/. Each licence text is in
+src/external_dependencies/licenses/LICENSE-<source>.
+
+ugv_gazebo_sim (deep copy of three mesh files)
+  Source:  https://github.com/agilexrobotics/ugv_gazebo_sim
+  Commit:  27633a956c845903ee630538afeb17fe70afdd84
+  Files:   ranger_mini/ranger_mini_v3/meshes/{ranger_base,steering_wheel,wheel_v3}.dae
+  Licence: UNCLEAR. The repository has no licence file. Its package.xml declares
+           only "BSD", with no variant and no copyright holder. Confirm with
+           AgileX Robotics before redistributing.
+
+ranger_ros2 (git submodule)
+  Source:  https://github.com/agilexrobotics/ranger_ros2
+  Commit:  b6ea21a275ca5e7168130cc6470e61474681d679 (branch humble)
+  Licence: BSD-3-Clause, Copyright (c) 2021, wangzheqie.
+
+ugv_sdk (git submodule)
+  Source:  https://github.com/agilexrobotics/ugv_sdk
+  Commit:  f2704eacdc90357078cd93ec60aae08bb4baab35 (branch main)
+  Licence: Apache-2.0 (LICENSE file). Its package.xml declares "BSD"; the
+           LICENSE file is taken as authoritative.

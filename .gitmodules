@@ -1,0 +1,6 @@
+[submodule "src/external_dependencies/ranger_ros2"]
+	path = src/external_dependencies/ranger_ros2
+	url = https://github.com/agilexrobotics/ranger_ros2.git
+[submodule "src/external_dependencies/ugv_sdk"]
+	path = src/external_dependencies/ugv_sdk
+	url = https://github.com/agilexrobotics/ugv_sdk.git

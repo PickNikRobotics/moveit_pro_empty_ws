@@ -1,0 +1,19 @@
+LICENCE UNCLEAR: no licence file exists upstream.
+
+Source:  https://github.com/agilexrobotics/ugv_gazebo_sim
+Commit:  27633a956c845903ee630538afeb17fe70afdd84 (branch master)
+Files:   ranger_mini/ranger_mini_v3/meshes/ranger_base.dae
+         ranger_mini/ranger_mini_v3/meshes/steering_wheel.dae
+         ranger_mini/ranger_mini_v3/meshes/wheel_v3.dae
+
+The repository has no LICENSE or COPYING file, and GitHub reports no licence
+for it. The only licence statement is in the package manifest that ships the
+meshes, ranger_mini/ranger_mini_v3/package.xml, which declares:
+
+  <license>BSD</license>
+
+with author "TODO". It names no BSD variant and no copyright holder.
+
+The files are vendored unmodified so the robot model shows the real body. Get
+written permission from AgileX Robotics, or replace these meshes with primitive
+shapes, before redistributing this workspace outside PickNik.

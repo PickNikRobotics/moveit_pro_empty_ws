@@ -88,6 +88,8 @@ repos:
           - "prettier@3.1.0"
           - "@prettier/plugin-xml@3.3.1"
         files: \.(xml)$
+        # Written by scripts/generate_mjcf.py, whose test compares them byte for byte.
+        exclude: ^src/agilex_ranger_mini_sim/mjcf/(agilex_ranger_mini|suite_106_walls)\.xml$
 
   - repo: local
     hooks:

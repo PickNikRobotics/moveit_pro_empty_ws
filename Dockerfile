@@ -62,6 +62,7 @@ RUN groupadd realtime && \
 # Install additional dependencies
 # You can also add any necessary apt-get install, pip install, etc. commands at this point.
 # NOTE: The /opt/overlay_ws folder contains MoveIt Pro binary packages and the source file.
+# The vendored ugv_sdk names ROS 1's catkin as its build tool, which has no ROS 2 rosdep key.
 # hadolint ignore=SC1091
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
@@ -70,7 +71,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     apt-get update && \
     rosdep install -q -y \
       --from-paths src \
-      --ignore-src
+      --ignore-src \
+      --skip-keys "catkin"
 
 # Set up colcon defaults for the new user
 USER ${USERNAME}
