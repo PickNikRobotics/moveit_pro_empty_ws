@@ -1,0 +1,105 @@
+###############################################################
+#
+#  AgileX Ranger Mini v3 on mock hardware.
+#
+#  This is the base of the config chain:
+#    agilex_ranger_mini_mock -> agilex_ranger_mini_sim -> agilex_ranger_mini_hw
+#  Robot semantics live here. The children override only the hardware.
+#
+###############################################################
+
+runtime_launch_file:
+  package: "agilex_ranger_mini_mock"
+  path: "launch/runtime.launch.xml"
+
+hardware:
+  launch_control_node: True
+  launch_robot_state_publisher: True
+
+  robot_description:
+    urdf:
+      package: "agilex_ranger_mini_mock"
+      path: "description/agilex_ranger_mini.urdf.xacro"
+    srdf:
+      package: "agilex_ranger_mini_mock"
+      path: "config/moveit/agilex_ranger_mini.srdf"
+    urdf_params:
+      # The mode's ros2_control file; each child config points it at its own.
+      - hardware_xacro:
+          package: "agilex_ranger_mini_mock"
+          path: "description/agilex_ranger_mini_mock.ros2_control.xacro"
+      - initial_positions_file:
+          package: "agilex_ranger_mini_mock"
+          path: "config/initial_positions.yaml"
+
+  # Nav2, the planar base bridge and the mock lidar. They run in the drivers
+  # process, which outlives Agent restarts.
+  additional_driver_launch_file:
+    package: "agilex_ranger_mini_mock"
+    path: "launch/mock_drivers.launch.py"
+
+ros_global_params:
+  use_sim_time: False
+
+moveit_params:
+  # The Waypoint Manager saves joint states from this group.
+  joint_group_name: "mobile_base"
+
+  kinematics:
+    package: "agilex_ranger_mini_mock"
+    path: "config/moveit/pose_ik.yaml"
+  joint_limits:
+    package: "agilex_ranger_mini_mock"
+    path: "config/moveit/joint_limits.yaml"
+  pose_jog:
+    package: "agilex_ranger_mini_mock"
+    path: "config/moveit/pose_jog.yaml"
+  joint_jog:
+    package: "agilex_ranger_mini_mock"
+    path: "config/moveit/joint_jog.yaml"
+  publish:
+    planning_scene: True
+    geometry_updates: True
+    state_updates: True
+    transforms_updates: True
+
+ros2_control:
+  config:
+    package: "agilex_ranger_mini_mock"
+    path: "config/control/agilex_ranger_mini.ros2_control.yaml"
+  # Nav2 drives through planar_velocity_controller, so it is up from the start.
+  controllers_active_at_startup:
+    - "joint_state_broadcaster"
+    - "planar_velocity_controller"
+  # The teleop controllers claim the same planar joints; Objectives switch them in.
+  controllers_inactive_at_startup:
+    - "joint_trajectory_controller"
+    - "joint_velocity_controller"
+    - "velocity_force_controller"
+  controllers_not_managed: []
+  controller_shared_topics: []
+
+objectives:
+  behavior_loader_plugins:
+    core:
+      - "moveit_pro::behaviors::CoreBehaviorsLoader"
+      - "moveit_pro::behaviors::MTCCoreBehaviorsLoader"
+      - "moveit_pro::behaviors::VisionBehaviorsLoader"
+      - "moveit_pro::behaviors::ConverterBehaviorsLoader"
+      - "moveit_pro::behaviors::NavBehaviorsLoader"
+  objective_library_paths:
+    core_objectives:
+      package_name: "moveit_pro_objectives"
+      relative_path: "objectives/core"
+    motion_objectives:
+      package_name: "moveit_pro_objectives"
+      relative_path: "objectives/motion"
+    visualization_objectives:
+      package_name: "moveit_pro_objectives"
+      relative_path: "objectives/visualization"
+    agilex_ranger_mini_objectives:
+      package_name: "agilex_ranger_mini_mock"
+      relative_path: "objectives"
+  waypoints_file:
+    package_name: "agilex_ranger_mini_mock"
+    relative_path: "waypoints/agilex_ranger_mini_waypoints.yaml"

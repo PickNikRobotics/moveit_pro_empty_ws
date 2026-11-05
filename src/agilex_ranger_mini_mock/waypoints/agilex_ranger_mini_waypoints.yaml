@@ -1,0 +1,141 @@
+- description: Where the base boots in mock and sim, in the open room of the suite_106 map.
+  favorite: true
+  joint_group_names:
+  - mobile_base
+  joint_state:
+    effort: []
+    header:
+      frame_id: ''
+      stamp:
+        nanosec: 0
+        sec: 0
+    name:
+    - linear_x_joint
+    - linear_y_joint
+    - rotational_yaw_joint
+    - fl_steering_joint
+    - fr_steering_joint
+    - rl_steering_joint
+    - rr_steering_joint
+    - fl_wheel_joint
+    - fr_wheel_joint
+    - rl_wheel_joint
+    - rr_wheel_joint
+    position:
+    - 5.0
+    - 12.75
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    velocity: []
+  multi_dof_joint_state:
+    header:
+      frame_id: ''
+      stamp:
+        nanosec: 0
+        sec: 0
+    joint_names: []
+    transforms: []
+    twist: []
+    wrench: []
+  name: Spawn
+- description: Open floor south-east of Spawn; the straight line from Spawn is clear of walls.
+  favorite: true
+  joint_group_names:
+  - mobile_base
+  joint_state:
+    effort: []
+    header:
+      frame_id: ''
+      stamp:
+        nanosec: 0
+        sec: 0
+    name:
+    - linear_x_joint
+    - linear_y_joint
+    - rotational_yaw_joint
+    - fl_steering_joint
+    - fr_steering_joint
+    - rl_steering_joint
+    - rr_steering_joint
+    - fl_wheel_joint
+    - fr_wheel_joint
+    - rl_wheel_joint
+    - rr_wheel_joint
+    position:
+    - 7.0
+    - 10.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    velocity: []
+  multi_dof_joint_state:
+    header:
+      frame_id: ''
+      stamp:
+        nanosec: 0
+        sec: 0
+    joint_names: []
+    transforms: []
+    twist: []
+    wrench: []
+  name: Room Centre
+- description: Spawn, turned a quarter turn to the left.
+  favorite: false
+  joint_group_names:
+  - mobile_base
+  joint_state:
+    effort: []
+    header:
+      frame_id: ''
+      stamp:
+        nanosec: 0
+        sec: 0
+    name:
+    - linear_x_joint
+    - linear_y_joint
+    - rotational_yaw_joint
+    - fl_steering_joint
+    - fr_steering_joint
+    - rl_steering_joint
+    - rr_steering_joint
+    - fl_wheel_joint
+    - fr_wheel_joint
+    - rl_wheel_joint
+    - rr_wheel_joint
+    position:
+    - 5.0
+    - 12.75
+    - 1.5708
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    velocity: []
+  multi_dof_joint_state:
+    header:
+      frame_id: ''
+      stamp:
+        nanosec: 0
+        sec: 0
+    joint_names: []
+    transforms: []
+    twist: []
+    wrench: []
+  name: Spawn Facing Left

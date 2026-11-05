@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<root BTCPP_format="4" main_tree_to_execute="Move Base to Spawn">
+  <!-- A planned joint-space move: it ignores the map, so keep the straight line to Spawn clear. -->
+  <BehaviorTree
+    ID="Move Base to Spawn"
+    _description="Plan and drive the base to the Spawn waypoint with the joint trajectory controller."
+  >
+    <SubTree
+      ID="Move to Named Waypoint"
+      waypoint_name="Spawn"
+      joint_group_name="mobile_base"
+      controller_names="joint_trajectory_controller"
+      controller_action_server="/joint_trajectory_controller/follow_joint_trajectory"
+      execution_pipeline="jtc"
+    />
+  </BehaviorTree>
+  <TreeNodesModel>
+    <SubTree ID="Move Base to Spawn">
+      <MetadataFields>
+        <Metadata subcategory="Motion - Execute" />
+        <Metadata runnable="true" />
+      </MetadataFields>
+    </SubTree>
+  </TreeNodesModel>
+</root>

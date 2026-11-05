@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Semantics of the AgileX Ranger Mini. No <virtual_joint> is declared: the URDF
+  roots the base at `world` and its three planar joints carry the base pose.
+-->
+<robot name="agilex_ranger_mini">
+  <!-- The base: planar x, y and yaw. Joint jog, pose jog, waypoints and the IMarker plan this group. -->
+  <group name="mobile_base">
+    <chain base_link="world" tip_link="base_link" />
+  </group>
+  <!-- The chassis as the base's end effector, so the IMarker and pose jog act on base_link. -->
+  <group name="mobile_base_ee">
+    <link name="chassis_link" />
+  </group>
+  <end_effector name="mobile_base_ee" parent_link="base_link" group="mobile_base_ee" parent_group="mobile_base" />
+
+  <group_state name="Spawn" group="mobile_base">
+    <joint name="linear_x_joint" value="5.0" />
+    <joint name="linear_y_joint" value="12.75" />
+    <joint name="rotational_yaw_joint" value="0.0" />
+  </group_state>
+
+  <!-- The base firmware steers and spins the wheels; nothing in MoveIt plans them. -->
+  <passive_joint name="fl_steering_joint" />
+  <passive_joint name="fr_steering_joint" />
+  <passive_joint name="rl_steering_joint" />
+  <passive_joint name="rr_steering_joint" />
+  <passive_joint name="fl_wheel_joint" />
+  <passive_joint name="fr_wheel_joint" />
+  <passive_joint name="rl_wheel_joint" />
+  <passive_joint name="rr_wheel_joint" />
+
+  <!-- Each wheel sits in a well under the deck and the lidar on top of it. -->
+  <disable_collisions link1="chassis_link" link2="fl_wheel_link" reason="Adjacent" />
+  <disable_collisions link1="chassis_link" link2="fr_wheel_link" reason="Adjacent" />
+  <disable_collisions link1="chassis_link" link2="rl_wheel_link" reason="Adjacent" />
+  <disable_collisions link1="chassis_link" link2="rr_wheel_link" reason="Adjacent" />
+  <disable_collisions link1="chassis_link" link2="laser_link" reason="Adjacent" />
+  <disable_collisions link1="fl_wheel_link" link2="fr_wheel_link" reason="Never" />
+  <disable_collisions link1="fl_wheel_link" link2="rl_wheel_link" reason="Never" />
+  <disable_collisions link1="fl_wheel_link" link2="rr_wheel_link" reason="Never" />
+  <disable_collisions link1="fr_wheel_link" link2="rl_wheel_link" reason="Never" />
+  <disable_collisions link1="fr_wheel_link" link2="rr_wheel_link" reason="Never" />
+  <disable_collisions link1="rl_wheel_link" link2="rr_wheel_link" reason="Never" />
+  <disable_collisions link1="fl_wheel_link" link2="laser_link" reason="Never" />
+  <disable_collisions link1="fr_wheel_link" link2="laser_link" reason="Never" />
+  <disable_collisions link1="rl_wheel_link" link2="laser_link" reason="Never" />
+  <disable_collisions link1="rr_wheel_link" link2="laser_link" reason="Never" />
+</robot>

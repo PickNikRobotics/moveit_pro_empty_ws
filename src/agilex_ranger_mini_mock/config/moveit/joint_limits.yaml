@@ -1,0 +1,19 @@
+# Planning limits for the planar base joints, below the URDF hardware ceilings.
+# Teleop, waypoint and IMarker motions plan with these; Nav2 has its own limits
+# in params/nav2_params.yaml. Why these values: docs/AGENT_COMMENTS.md.
+joint_limits:
+  linear_x_joint:
+    has_velocity_limits: true
+    max_velocity: 0.5
+    has_acceleration_limits: true
+    max_acceleration: 1.0
+  linear_y_joint:
+    has_velocity_limits: true
+    max_velocity: 0.5
+    has_acceleration_limits: true
+    max_acceleration: 1.0
+  rotational_yaw_joint:
+    has_velocity_limits: true
+    max_velocity: 1.0
+    has_acceleration_limits: true
+    max_acceleration: 1.0

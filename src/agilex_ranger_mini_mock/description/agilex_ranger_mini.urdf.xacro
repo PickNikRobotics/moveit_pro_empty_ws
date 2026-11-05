@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<!--
+  AgileX Ranger Mini v3, shared by the mock, sim and hw configs.
+
+  world
+   +- linear_x_joint (prismatic)        -> virtual_rail_link_1
+      +- linear_y_joint (prismatic)     -> virtual_rail_link_2
+         +- rotational_yaw_joint (cont) -> base_link   [REP 105 base frame]
+            +- base_link_to_chassis     -> chassis_link
+               +- XX_steering_joint     -> XX_steering_link
+               |  +- XX_wheel_joint     -> XX_wheel_link
+               +- laser_joint           -> laser_link
+
+  The planar joints carry the base pose in `world`. Nothing else publishes a
+  transform to base_link. The frames above `world`: docs/AGENT_COMMENTS.md.
+-->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="agilex_ranger_mini">
+
+  <!-- The mode's ros2_control file. It must define agilex_ranger_mini_ros2_control(name, initial_positions). -->
+  <xacro:arg name="hardware_xacro"
+             default="$(find agilex_ranger_mini_mock)/description/agilex_ranger_mini_mock.ros2_control.xacro" />
+  <!-- Boot value of each planar joint, which is where mock hardware starts. -->
+  <xacro:arg name="initial_positions_file"
+             default="$(find agilex_ranger_mini_mock)/config/initial_positions.yaml" />
+
+  <!-- Lidar mount in chassis_link. Empty is the deck centre, where mock and sim carry it. -->
+  <xacro:arg name="lidar_mount_xyz" default="" />
+  <xacro:arg name="lidar_mount_rpy" default="0 0 0" />
+
+  <xacro:include filename="$(find agilex_ranger_mini_mock)/description/agilex_ranger_mini_macro.xacro" />
+
+  <link name="world" />
+  <xacro:agilex_ranger_mini
+    parent="world"
+    lidar_xyz="$(arg lidar_mount_xyz)"
+    lidar_rpy="$(arg lidar_mount_rpy)" />
+
+  <xacro:include filename="$(arg hardware_xacro)" />
+  <xacro:agilex_ranger_mini_ros2_control
+    name="AgileXRangerMini"
+    initial_positions="${xacro.load_yaml('$(arg initial_positions_file)')}" />
+</robot>

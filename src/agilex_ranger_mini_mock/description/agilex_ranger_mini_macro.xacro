@@ -1,0 +1,217 @@
+<?xml version="1.0"?>
+<!-- AgileX Ranger Mini v3. Sources of every number: docs/AGENT_COMMENTS.md. -->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- Body envelope and drive layout, metres. Wheelbase and track are the steering pivot spacing. -->
+  <xacro:property name="wheelbase" value="0.494" />
+  <xacro:property name="track" value="0.364" />
+  <xacro:property name="wheel_radius" value="0.100" />
+  <xacro:property name="wheel_width" value="0.080" />
+  <xacro:property name="pivot_height" value="0.220" />
+  <xacro:property name="body_length" value="0.720" />
+  <xacro:property name="body_width" value="0.500" />
+  <xacro:property name="body_height" value="0.345" />
+  <xacro:property name="ground_clearance" value="0.105" />
+  <!-- Height of the AgileX mesh origin above the floor. -->
+  <xacro:property name="mesh_origin_height" value="0.320" />
+
+  <!-- Masses, kilograms. The chassis takes what the four corner modules do not. -->
+  <xacro:property name="total_mass" value="75.0" />
+  <xacro:property name="wheel_mass" value="8.0" />
+  <xacro:property name="steering_mass" value="1.0" />
+  <xacro:property name="chassis_mass" value="${total_mass - 4.0 * (wheel_mass + steering_mass)}" />
+
+  <!-- Hardware ceilings of the base, from the AgileX manual. -->
+  <xacro:property name="max_linear_velocity" value="2.0" />
+  <xacro:property name="max_angular_velocity" value="3.259" />
+  <xacro:property name="steering_limit" value="1.571" />
+  <xacro:property name="steering_velocity" value="6.28" />
+  <xacro:property name="wheel_velocity" value="${max_linear_velocity / wheel_radius}" />
+  <!-- Reach of the planar x and y joints. It bounds the floor area the base can plan over. -->
+  <xacro:property name="base_travel" value="50.0" />
+
+  <!-- Navigation lidar mount on the deck. The real Ranger ships without one. -->
+  <xacro:property name="lidar_height" value="0.040" />
+  <xacro:property name="lidar_radius" value="0.035" />
+
+  <xacro:property name="agilex_meshes" value="package://agilex_ranger_mini_mock/meshes/agilex" />
+
+  <!--
+    @brief The Ranger Mini, from its parent frame down to the wheels.
+
+    @details The base pose rides on three planar joints, x, y and yaw, which
+    every mode commands with velocity. Each corner adds a steering joint and a
+    wheel joint that report state only; the base firmware owns them.
+
+    | Frame                 | Role                                          |
+    | - | - |
+    | virtual_rail_link_1/2 | carriers of the planar x and y joints         |
+    | base_link             | REP 105 base frame, on the floor              |
+    | chassis_link          | chassis body; origin of the AgileX body mesh  |
+    | XX_steering_link      | steering module, on its vertical pivot        |
+    | XX_wheel_link         | wheel, spinning about the module's Y          |
+    | laser_link            | navigation lidar, scan plane level            |
+
+    @param parent Frame the planar chain hangs off.
+    @param lidar_xyz Lidar position in chassis_link. Empty puts it on the deck centre.
+    @param lidar_rpy Lidar orientation in chassis_link.
+  -->
+  <xacro:macro name="agilex_ranger_mini" params="parent lidar_xyz:='' lidar_rpy:='0 0 0'">
+
+    <!-- Planar base pose: x, y, then yaw. -->
+    <link name="virtual_rail_link_1" />
+    <joint name="linear_x_joint" type="prismatic">
+      <parent link="${parent}" />
+      <child link="virtual_rail_link_1" />
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <axis xyz="1 0 0" />
+      <limit effort="1000.0" lower="${-base_travel}" upper="${base_travel}" velocity="${max_linear_velocity}" />
+    </joint>
+
+    <link name="virtual_rail_link_2" />
+    <joint name="linear_y_joint" type="prismatic">
+      <parent link="virtual_rail_link_1" />
+      <child link="virtual_rail_link_2" />
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <axis xyz="0 1 0" />
+      <limit effort="1000.0" lower="${-base_travel}" upper="${base_travel}" velocity="${max_linear_velocity}" />
+    </joint>
+
+    <link name="base_link" />
+    <joint name="rotational_yaw_joint" type="continuous">
+      <parent link="virtual_rail_link_2" />
+      <child link="base_link" />
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <axis xyz="0 0 1" />
+      <limit effort="500.0" velocity="${max_angular_velocity}" />
+    </joint>
+
+    <!-- Chassis: a deck over the pivots and a belly box between the wheels. -->
+    <link name="chassis_link">
+      <inertial>
+        <origin xyz="0 0 ${0.5 * (ground_clearance + body_height) - mesh_origin_height}" rpy="0 0 0" />
+        <mass value="${chassis_mass}" />
+        <xacro:property name="h_env" value="${body_height - ground_clearance}" />
+        <inertia ixx="${chassis_mass * (body_width ** 2 + h_env ** 2) / 12.0}" ixy="0" ixz="0"
+                 iyy="${chassis_mass * (body_length ** 2 + h_env ** 2) / 12.0}" iyz="0"
+                 izz="${chassis_mass * (body_length ** 2 + body_width ** 2) / 12.0}" />
+      </inertial>
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <geometry>
+          <mesh filename="${agilex_meshes}/ranger_base.dae" scale="1000 1000 1000" />
+        </geometry>
+      </visual>
+      <collision>
+        <origin xyz="0 0 ${0.5 * (pivot_height + body_height) - mesh_origin_height}" rpy="0 0 0" />
+        <geometry>
+          <box size="${body_length} ${body_width} ${body_height - pivot_height}" />
+        </geometry>
+      </collision>
+      <!-- The belly fills the gap between the front and rear wheel sweeps. -->
+      <xacro:property name="wheel_sweep" value="${sqrt(wheel_radius ** 2 + 0.25 * wheel_width ** 2)}" />
+      <collision>
+        <origin xyz="0 0 ${0.5 * (ground_clearance + pivot_height) - mesh_origin_height}" rpy="0 0 0" />
+        <geometry>
+          <box size="${wheelbase - 2.0 * wheel_sweep} ${body_width} ${pivot_height - ground_clearance}" />
+        </geometry>
+      </collision>
+    </link>
+    <joint name="base_link_to_chassis" type="fixed">
+      <parent link="base_link" />
+      <child link="chassis_link" />
+      <origin xyz="0 0 ${mesh_origin_height}" rpy="0 0 0" />
+    </joint>
+
+    <!--
+      @brief One corner: a steering module on a vertical pivot, and its wheel.
+      @param corner fl, fr, rl or rr.
+      @param sx +1 at the front, -1 at the rear.
+      @param sy +1 on the left, -1 on the right.
+    -->
+    <xacro:macro name="agilex_ranger_mini_corner" params="corner sx sy">
+      <link name="${corner}_steering_link">
+        <inertial>
+          <origin xyz="0 0 0" rpy="0 0 0" />
+          <mass value="${steering_mass}" />
+          <inertia ixx="0.0063625" ixy="0" ixz="0" iyy="0.006363" iyz="0" izz="0.010465" />
+        </inertial>
+        <visual>
+          <origin xyz="0 0 0" rpy="0 0 0" />
+          <geometry>
+            <mesh filename="${agilex_meshes}/steering_wheel.dae" scale="10 10 10" />
+          </geometry>
+        </visual>
+      </link>
+      <!-- Positive steers the wheel to the left (REP 103). -->
+      <joint name="${corner}_steering_joint" type="revolute">
+        <parent link="chassis_link" />
+        <child link="${corner}_steering_link" />
+        <origin xyz="${sx * 0.5 * wheelbase} ${sy * 0.5 * track} ${pivot_height - mesh_origin_height}" rpy="0 0 0" />
+        <axis xyz="0 0 1" />
+        <limit effort="5.0" lower="${-steering_limit}" upper="${steering_limit}" velocity="${steering_velocity}" />
+      </joint>
+
+      <link name="${corner}_wheel_link">
+        <inertial>
+          <origin xyz="0 0 0" rpy="0 0 0" />
+          <mass value="${wheel_mass}" />
+          <inertia ixx="${wheel_mass * (3.0 * wheel_radius ** 2 + wheel_width ** 2) / 12.0}" ixy="0" ixz="0"
+                   iyy="${0.5 * wheel_mass * wheel_radius ** 2}" iyz="0"
+                   izz="${wheel_mass * (3.0 * wheel_radius ** 2 + wheel_width ** 2) / 12.0}" />
+        </inertial>
+        <!-- The mesh is flipped on the right side so its hub faces out, as in the AgileX model. -->
+        <visual>
+          <origin xyz="0 0 0" rpy="${0.5 * pi * (1 - sy)} 0 0" />
+          <geometry>
+            <mesh filename="${agilex_meshes}/wheel_v3.dae" scale="10 10 10" />
+          </geometry>
+        </visual>
+        <collision>
+          <origin xyz="0 0 0" rpy="${pi / 2} 0 0" />
+          <geometry>
+            <cylinder radius="${wheel_radius}" length="${wheel_width}" />
+          </geometry>
+        </collision>
+      </link>
+      <joint name="${corner}_wheel_joint" type="continuous">
+        <parent link="${corner}_steering_link" />
+        <child link="${corner}_wheel_link" />
+        <origin xyz="0 0 ${wheel_radius - pivot_height}" rpy="0 0 0" />
+        <axis xyz="0 1 0" />
+        <limit effort="50.0" velocity="${wheel_velocity}" />
+      </joint>
+    </xacro:macro>
+
+    <xacro:agilex_ranger_mini_corner corner="fl" sx="1" sy="1" />
+    <xacro:agilex_ranger_mini_corner corner="fr" sx="1" sy="-1" />
+    <xacro:agilex_ranger_mini_corner corner="rl" sx="-1" sy="1" />
+    <xacro:agilex_ranger_mini_corner corner="rr" sx="-1" sy="-1" />
+
+    <!-- Lidar puck on the deck. The scan plane runs through its centre, first beam along +X. -->
+    <link name="laser_link">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <geometry>
+          <cylinder radius="${lidar_radius}" length="${lidar_height}" />
+        </geometry>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <geometry>
+          <cylinder radius="${lidar_radius}" length="${lidar_height}" />
+        </geometry>
+      </collision>
+    </link>
+    <joint name="laser_joint" type="fixed">
+      <parent link="chassis_link" />
+      <child link="laser_link" />
+      <xacro:if value="${lidar_xyz == ''}">
+        <origin xyz="0 0 ${body_height + 0.5 * lidar_height - mesh_origin_height}" rpy="${lidar_rpy}" />
+      </xacro:if>
+      <xacro:unless value="${lidar_xyz == ''}">
+        <origin xyz="${lidar_xyz}" rpy="${lidar_rpy}" />
+      </xacro:unless>
+    </joint>
+  </xacro:macro>
+</robot>

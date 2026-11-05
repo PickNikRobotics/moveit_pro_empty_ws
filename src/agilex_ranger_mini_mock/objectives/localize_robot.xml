@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<root BTCPP_format="4" main_tree_to_execute="Localize Robot">
+  <BehaviorTree
+    ID="Localize Robot"
+    _description="Place a marker where the base really is to re-seed AMCL. Run it whenever the base is moved by hand."
+    _favorite="true"
+  >
+    <Control ID="Sequence">
+      <!-- The marker starts above the base so it is visible; its height is ignored. -->
+      <Action
+        ID="GetLatestTransform"
+        target_frame_id="map"
+        source_frame_id="base_link"
+        transform="{base_in_map}"
+      />
+      <Action
+        ID="ConvertTransformStampedToPoseStamped"
+        transform_stamped="{base_in_map}"
+        pose_stamped="{base_pose}"
+      />
+      <Action
+        ID="TransformPose"
+        input_pose="{base_pose}"
+        translation_xyz="0;0;1.0"
+        output_pose="{marker_seed_pose}"
+      />
+      <Action ID="ResetVector" vector="{marker_poses}" />
+      <Action
+        ID="PushBackVector"
+        input_vector="{marker_poses}"
+        element="{marker_seed_pose}"
+        output_vector="{marker_poses}"
+      />
+      <Action
+        ID="AdjustPoseWithIMarker"
+        prompts="Move the marker over where the base really is, X axis forward. Height is ignored."
+        initial_poses="{marker_poses}"
+        adjusted_poses="{adjusted_poses}"
+      />
+      <Action
+        ID="GetElementOfVector"
+        vector_in="{adjusted_poses}"
+        index="0"
+        element="{initial_pose}"
+      />
+      <Action
+        ID="SetInitialPose"
+        pose="{initial_pose}"
+        global_frame_id="map"
+        robot_frame_id="base_link"
+      />
+    </Control>
+  </BehaviorTree>
+  <TreeNodesModel>
+    <SubTree ID="Localize Robot">
+      <MetadataFields>
+        <Metadata subcategory="Navigation" />
+        <Metadata runnable="true" />
+      </MetadataFields>
+    </SubTree>
+  </TreeNodesModel>
+</root>

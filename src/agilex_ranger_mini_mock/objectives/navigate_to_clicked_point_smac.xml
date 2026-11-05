@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<root
+  BTCPP_format="4"
+  main_tree_to_execute="Navigate to Clicked Point with SMAC"
+>
+  <BehaviorTree
+    ID="Navigate to Clicked Point with SMAC"
+    _description="Plan a path with the SMAC 2D planner to a point clicked on the floor, then follow it with MPPI."
+    _favorite="true"
+  >
+    <Control ID="Sequence">
+      <!-- Nav2 drives through the planar velocity controller; this stops any teleop controller. -->
+      <Action
+        ID="SwitchController"
+        activate_controllers="planar_velocity_controller"
+        automatic_deactivation="true"
+      />
+      <Action
+        ID="GetPoseFromUser"
+        view_name="Visualization"
+        pose_prompt="Click a goal on the floor. The base arrives facing the world X axis (red)."
+        is_normal="true"
+        user_pose="{goal}"
+      />
+      <Action
+        ID="ComputePathToPoseAction"
+        action_name="/compute_path_to_pose"
+        planner_id="Smac"
+        use_start="false"
+        goal="{goal}"
+        path="{path}"
+        planning_time="{planning_time}"
+        timeout_sec="-1"
+      />
+      <Action
+        ID="FollowPathAction"
+        action_name="/follow_path"
+        controller_id="FollowPath"
+        goal_checker_id="general_goal_checker"
+        path="{path}"
+        distance_to_goal="{distance_to_goal}"
+        speed="{speed}"
+        timeout_sec="-1"
+      />
+    </Control>
+  </BehaviorTree>
+  <TreeNodesModel>
+    <SubTree ID="Navigate to Clicked Point with SMAC">
+      <MetadataFields>
+        <Metadata subcategory="Navigation" />
+        <Metadata runnable="true" />
+      </MetadataFields>
+    </SubTree>
+  </TreeNodesModel>
+</root>

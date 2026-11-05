@@ -1,0 +1,6 @@
+# Boot pose of the planar base joints under mock hardware: its pose in the map,
+# in metres and radians. The Nav2 AMCL seed in params/nav2_params.yaml must match;
+# test/test_config_contract.py checks it.
+linear_x_joint: 5.0
+linear_y_joint: 12.75
+rotational_yaw_joint: 0.0

@@ -1,0 +1,7 @@
+# The base has three degrees of freedom and cannot reach an arbitrary 6-DOF
+# pose, so the solver returns the closest reachable pose instead of failing.
+mobile_base:
+  kinematics_solver: pose_ik_plugin/PoseIKPlugin
+  target_tolerance: 0.001
+  solve_mode: "optimize_distance"
+  optimization_timeout: 0.01

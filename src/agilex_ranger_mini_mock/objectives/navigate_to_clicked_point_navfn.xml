@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<root
+  BTCPP_format="4"
+  main_tree_to_execute="Navigate to Clicked Point with NavFn"
+>
+  <BehaviorTree
+    ID="Navigate to Clicked Point with NavFn"
+    _description="Drive the base with Nav2 to a point clicked on the floor. Nav2's default tree plans with NavFn, replans and recovers."
+    _favorite="true"
+  >
+    <Control ID="Sequence">
+      <!-- Nav2 drives through the planar velocity controller; this stops any teleop controller. -->
+      <Action
+        ID="SwitchController"
+        activate_controllers="planar_velocity_controller"
+        automatic_deactivation="true"
+      />
+      <Action
+        ID="GetPoseFromUser"
+        view_name="Visualization"
+        pose_prompt="Click a goal on the floor. The base arrives facing the world X axis (red)."
+        is_normal="true"
+        user_pose="{goal}"
+      />
+      <Action
+        ID="NavigateToPoseAction"
+        action_name="/navigate_to_pose"
+        pose_stamped="{goal}"
+        behavior_tree_path=""
+        timeout_sec="-1"
+      />
+    </Control>
+  </BehaviorTree>
+  <TreeNodesModel>
+    <SubTree ID="Navigate to Clicked Point with NavFn">
+      <MetadataFields>
+        <Metadata subcategory="Navigation" />
+        <Metadata runnable="true" />
+      </MetadataFields>
+    </SubTree>
+  </TreeNodesModel>
+</root>
