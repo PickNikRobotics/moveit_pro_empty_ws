@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:include filename="$(find agilex_ranger_mini_mock)/description/agilex_ranger_mini_ros2_control_joints.xacro" />
+
+  <xacro:arg name="mujoco_model" default="mjcf/scene.xml" />
+  <xacro:arg name="mujoco_viewer" default="false" />
+
+  <!--
+    @brief Simulated hardware: the MoveIt Pro MuJoCo plugin.
+
+    @details MuJoCo drives the three planar joints with velocity actuators named
+    after them, and reports every joint. The base pose stays with
+    robot_state_publisher through the planar joints, so MuJoCo publishes no base
+    edge and no odometry; scripts/planar_base_bridge.py publishes /odom.
+
+    The lidar fan sits on the base_link body, so its scan frame hangs off
+    base_link. Its scan goes to /scan, the plugin's default topic.
+
+    @param name Name of the ros2_control block.
+    @param initial_positions Unused: the MJCF keyframe sets the boot pose.
+  -->
+  <xacro:macro name="agilex_ranger_mini_ros2_control" params="name initial_positions">
+    <ros2_control name="${name}" type="system">
+      <hardware>
+        <plugin>picknik_mujoco_ros/MujocoSystem</plugin>
+        <param name="mujoco_model">$(arg mujoco_model)</param>
+        <param name="mujoco_model_package">agilex_ranger_mini_sim</param>
+        <param name="mujoco_keyframe">default</param>
+        <param name="mujoco_viewer">$(arg mujoco_viewer)</param>
+        <param name="render_publish_rate">10</param>
+        <param name="tf_publish_rate">60</param>
+        <param name="lidar_publish_rate">10</param>
+        <param name="publish_odom">false</param>
+        <param name="publish_mj_world_tf">false</param>
+        <param name="base_link_name">base_link</param>
+      </hardware>
+      <xacro:agilex_ranger_mini_ros2_control_joints initial_positions="${initial_positions}" />
+    </ros2_control>
+  </xacro:macro>
+</robot>

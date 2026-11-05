@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!-- The Ranger Mini in the suite_106 room. The MJCF world frame is the map frame. -->
+<mujoco model="agilex_ranger_mini_scene">
+  <compiler angle="radian" autolimits="true" />
+  <option timestep="0.002" integrator="implicitfast" />
+
+  <include file="agilex_ranger_mini.xml" />
+  <include file="suite_106_walls.xml" />
+
+  <visual>
+    <global offwidth="1280" offheight="720" />
+    <headlight
+      ambient="0.35 0.35 0.35"
+      diffuse="0.6 0.6 0.6"
+      specular="0 0 0"
+    />
+  </visual>
+
+  <asset>
+    <texture
+      type="2d"
+      name="groundplane"
+      builtin="checker"
+      mark="edge"
+      rgb1="0.2 0.3 0.4"
+      rgb2="0.1 0.2 0.3"
+      markrgb="0.8 0.8 0.8"
+      width="300"
+      height="300"
+    />
+    <material
+      name="groundplane"
+      texture="groundplane"
+      texuniform="true"
+      texrepeat="5 5"
+      reflectance="0.2"
+    />
+  </asset>
+
+  <worldbody>
+    <light pos="8 10 6" dir="0 0 -1" directional="true" />
+    <geom name="floor" type="plane" size="0 0 0.05" material="groundplane" />
+  </worldbody>
+
+  <!-- qpos: the planar x, y and yaw, then steering and wheel per corner fl, fr, rl, rr. Spawn matches the mock config. -->
+  <keyframe>
+    <key name="default" qpos="5.0 12.75 0.0 0 0 0 0 0 0 0 0" ctrl="0 0 0" />
+  </keyframe>
+</mujoco>

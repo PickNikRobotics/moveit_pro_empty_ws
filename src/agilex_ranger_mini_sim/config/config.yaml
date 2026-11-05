@@ -1,0 +1,25 @@
+###############################################################
+#
+#  AgileX Ranger Mini v3 in the MoveIt Pro MuJoCo simulator.
+#
+#  Inherits everything from agilex_ranger_mini_mock and replaces only the
+#  hardware: the MuJoCo ros2_control block, the scene, and the driver launch
+#  file that adds the simulated lidar in place of the mock one.
+#
+###############################################################
+
+based_on_package: "agilex_ranger_mini_mock"
+
+hardware:
+  robot_description:
+    urdf_params:
+      - hardware_xacro:
+          package: "agilex_ranger_mini_sim"
+          path: "description/agilex_ranger_mini_sim.ros2_control.xacro"
+      - mujoco_model: "mjcf/scene.xml"
+      # Set to true locally to open the MuJoCo viewer window.
+      - mujoco_viewer: false
+
+  additional_driver_launch_file:
+    package: "agilex_ranger_mini_sim"
+    path: "launch/sim_drivers.launch.py"
