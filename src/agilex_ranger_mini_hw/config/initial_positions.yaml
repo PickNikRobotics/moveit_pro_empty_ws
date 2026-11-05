@@ -1,0 +1,5 @@
+# Planar joint values until the first odometry message arrives. The AgileX
+# driver starts its odometry at the origin, so the joints do too.
+linear_x_joint: 0.0
+linear_y_joint: 0.0
+rotational_yaw_joint: 0.0

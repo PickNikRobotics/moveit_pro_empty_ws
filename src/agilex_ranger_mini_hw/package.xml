@@ -1,0 +1,36 @@
+<?xml version="1.0" ?>
+<package format="3">
+  <name>agilex_ranger_mini_hw</name>
+  <version>0.1.0</version>
+  <description>
+    MoveIt Pro configuration for the physical AgileX Ranger Mini v3, through
+    AgileX's ranger_base CAN driver. Inherits from agilex_ranger_mini_sim.
+    Untested on hardware.
+  </description>
+
+  <maintainer email="support@picknik.ai">MoveIt Pro Maintainer</maintainer>
+
+  <license>BSD-3-Clause</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <exec_depend>agilex_ranger_mini_mock</exec_depend>
+  <exec_depend>agilex_ranger_mini_sim</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>joint_state_topic_hardware_interface</exec_depend>
+  <exec_depend>nav_msgs</exec_depend>
+  <exec_depend>ranger_base</exec_depend>
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+
+  <test_depend>agilex_ranger_mini_mock</test_depend>
+  <test_depend>ament_cmake_pytest</test_depend>
+  <test_depend>ament_index_python</test_depend>
+  <test_depend>python3-pytest</test_depend>
+  <test_depend>python3-yaml</test_depend>
+  <test_depend>xacro</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

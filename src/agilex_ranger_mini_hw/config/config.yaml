@@ -1,0 +1,30 @@
+###############################################################
+#
+#  AgileX Ranger Mini v3, physical hardware. UNTESTED ON HARDWARE.
+#
+#  Inherits from agilex_ranger_mini_sim and replaces only the hardware: a
+#  topic-based ros2_control block bridged to AgileX's ranger_base CAN driver.
+#  Read this package's README before the first run.
+#
+###############################################################
+
+based_on_package: "agilex_ranger_mini_sim"
+
+hardware:
+  robot_description:
+    urdf_params:
+      - hardware_xacro:
+          package: "agilex_ranger_mini_hw"
+          path: "description/agilex_ranger_mini_hw.ros2_control.xacro"
+      - initial_positions_file:
+          package: "agilex_ranger_mini_hw"
+          path: "config/initial_positions.yaml"
+      # MEASURE: the navigation lidar's mount in chassis_link, x y z in metres and
+      # roll pitch yaw in radians. The values here are the mock deck centre.
+      - lidar_mount_xyz: "0 0 0.045"
+      - lidar_mount_rpy: "0 0 0"
+
+  # The AgileX driver, its bridge, the lidar hook and the shared Nav2 stack.
+  additional_driver_launch_file:
+    package: "agilex_ranger_mini_hw"
+    path: "launch/hw_drivers.launch.py"
