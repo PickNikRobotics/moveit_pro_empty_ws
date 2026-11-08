@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<root BTCPP_format="4" main_tree_to_execute="Refine Localization In Place Subtree">
+  <BehaviorTree
+    ID="Refine Localization In Place Subtree"
+    _description="Seed AMCL, request updates without motion, and accept the result only when fresh scans fit the map. On failure, re-publish restore_pose and fail. Keep the base stationary; cancelling skips restore."
+    _favorite="false"
+  >
+    <Control ID="Sequence">
+      <Control ID="Fallback" name="Check the refinement settings">
+        <Condition
+          ID="ScriptCondition"
+          code="num_updates &gt; 0 &amp;&amp; num_updates &lt;= 100 &amp;&amp; num_checks &gt; 0 &amp;&amp; num_checks &lt;= 10 &amp;&amp; inlier_distance &gt; 0 &amp;&amp; inlier_distance &lt; 2 &amp;&amp; min_inlier_fraction &gt; 0 &amp;&amp; min_inlier_fraction &lt;= 1"
+        />
+        <Control ID="Sequence">
+          <Action
+            ID="LogMessage"
+            log_level="error"
+            message="Invalid localization settings: update and check counts must be bounded and positive, and the scan-fit gate must be enabled. AMCL was not seeded."
+          />
+          <Action ID="AlwaysFailure" />
+        </Control>
+      </Control>
+      <Action
+        ID="SetInitialPose"
+        name="Seed AMCL"
+        pose="{seed_pose}"
+        global_frame_id="map"
+        robot_frame_id="base_link"
+      />
+      <Control ID="Fallback" name="Refine and check, or restore and fail">
+        <Control ID="Sequence" name="Refine and check">
+          <Action ID="WaitForDuration" delay_duration="0.300000" />
+          <Decorator ID="RepeatUnlessFailureEachTick" num_cycles="{num_updates}">
+            <Control ID="Sequence">
+              <Action
+                ID="CallEmptyService"
+                name="Request an AMCL update"
+                service_name="/request_nomotion_update"
+                response_timeout="2.000000"
+                wait_for_server_available_timeout="2.000000"
+              />
+              <Action
+                ID="GetLaserScan"
+                name="Wait for the next lidar scan"
+                topic_name="/scan"
+                message_timeout_sec="2.000000"
+                publisher_timeout_sec="2.000000"
+                message_out="{update_scan}"
+              />
+              <Action ID="WaitForDuration" delay_duration="0.150000" />
+            </Control>
+          </Decorator>
+          <Action
+            ID="GetOccupancyGrid"
+            topic_name="/map"
+            message_timeout_sec="2.000000"
+            publisher_timeout_sec="2.000000"
+            message_out="{localization_map}"
+          />
+          <Decorator ID="RepeatUnlessFailureEachTick" num_cycles="{num_checks}">
+            <Control ID="Sequence">
+              <Action
+                ID="GetLaserScan"
+                name="Get a scan to check"
+                topic_name="/scan"
+                message_timeout_sec="2.000000"
+                publisher_timeout_sec="2.000000"
+                message_out="{check_scan}"
+              />
+              <Action ID="WaitForDuration" delay_duration="0.150000" />
+              <Action
+                ID="GetLatestTransform"
+                name="Read the refined estimate"
+                target_frame_id="map"
+                source_frame_id="base_link"
+                transform="{refined_transform}"
+              />
+              <Action
+                ID="ConvertTransformStampedToPoseStamped"
+                transform_stamped="{refined_transform}"
+                pose_stamped="{refined_pose}"
+              />
+              <Action
+                ID="ScanMatchResidual"
+                name="Check the lidar against the map"
+                pose="{refined_pose}"
+                scan="{check_scan}"
+                map="{localization_map}"
+                base_frame_id="base_link"
+                max_range="10.000000"
+                inlier_distance="{inlier_distance}"
+                min_inlier_fraction="{min_inlier_fraction}"
+                inlier_fraction="{inlier_fraction}"
+              />
+            </Control>
+          </Decorator>
+          <Action
+            ID="LogMessage"
+            log_level="info"
+            message="Localization accepted: AMCL was refined in place and the lidar scans fit the map."
+          />
+        </Control>
+        <Control ID="Sequence" name="Restore and fail">
+          <Action
+            ID="LogMessage"
+            log_level="error"
+            message="Localization rejected: refinement or the scan-fit check failed. Re-publishing the previous estimate."
+          />
+          <Action
+            ID="SetInitialPose"
+            name="Re-publish the previous estimate"
+            pose="{restore_pose}"
+            global_frame_id="map"
+            robot_frame_id="base_link"
+          />
+          <Control ID="Fallback" name="Synchronize restore, or report it unconfirmed">
+            <Control ID="Sequence">
+              <Action ID="WaitForDuration" delay_duration="0.300000" />
+              <Action
+                ID="CallEmptyService"
+                service_name="/request_nomotion_update"
+                response_timeout="2.000000"
+                wait_for_server_available_timeout="2.000000"
+              />
+              <Action
+                ID="GetLaserScan"
+                topic_name="/scan"
+                message_timeout_sec="2.000000"
+                publisher_timeout_sec="2.000000"
+                message_out="{restore_scan}"
+              />
+              <Action ID="WaitForDuration" delay_duration="0.150000" />
+              <Action
+                ID="LogMessage"
+                log_level="warn"
+                message="The previous estimate was re-published and a lidar scan arrived. Localization remains rejected."
+              />
+            </Control>
+            <Action
+              ID="LogMessage"
+              log_level="error"
+              message="The previous estimate was re-published, but no update or scan was confirmed. Check AMCL and lidar before navigating."
+            />
+          </Control>
+          <Action ID="AlwaysFailure" />
+        </Control>
+      </Control>
+    </Control>
+  </BehaviorTree>
+  <TreeNodesModel>
+    <SubTree ID="Refine Localization In Place Subtree">
+      <MetadataFields>
+        <Metadata runnable="false" />
+        <Metadata subcategory="Navigation" />
+      </MetadataFields>
+      <input_port name="seed_pose" type="geometry_msgs::msg::PoseStamped">
+        Candidate base pose in map.
+      </input_port>
+      <input_port name="restore_pose" type="geometry_msgs::msg::PoseStamped">
+        Previous base estimate in map, captured before seeding.
+      </input_port>
+      <input_port name="num_updates" default="20" type="int">
+        Number of requested no-motion updates, each followed by a fresh scan.
+      </input_port>
+      <input_port name="num_checks" default="3" type="int">
+        Number of consecutive fresh scans that must fit the refined estimate.
+      </input_port>
+      <input_port name="inlier_distance" default="0.15" type="double">
+        Maximum endpoint distance to a wall for a fitting beam, in metres.
+      </input_port>
+      <input_port name="min_inlier_fraction" default="0.8" type="double">
+        Minimum fraction of usable beams that must fit the map.
+      </input_port>
+    </SubTree>
+  </TreeNodesModel>
+</root>

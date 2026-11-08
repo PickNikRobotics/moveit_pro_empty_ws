@@ -24,9 +24,13 @@ roles and run commands: [README.md](README.md).
   dependency with its source URL and exact commit ID.
 - Each external dependency's licence text is copied to
   `src/external_dependencies/licenses/LICENSE-<source>`.
-- External dependencies must be Apache or BSD licensed. When a licence is
-  unclear, do not block: record it as licence unclear in NOTICE and tell the
-  reviewer.
+- Accepted dependency licences are Apache, BSD, MIT and Boost Software License
+  1.0. An unclear licence does not block inclusion: record it in NOTICE and
+  tell the reviewer. This does not approve other known licences.
+- For SDK-contained libraries, use supplied third-party notices when they
+  cover delivered parts; do not add recursive inventories or duplicate copies.
+  Inner licences must be compatible with the outer distribution, and required
+  licence and copyright notices must remain in delivered source or images.
 - Never change files inside `src/external_dependencies/` (submodules and deep
   copies). Adding or removing a dependency, or a file under `licenses/`, is fine.
 

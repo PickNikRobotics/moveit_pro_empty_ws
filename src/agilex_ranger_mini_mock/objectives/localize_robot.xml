@@ -2,11 +2,11 @@
 <root BTCPP_format="4" main_tree_to_execute="Localize Robot">
   <BehaviorTree
     ID="Localize Robot"
-    _description="Place a marker where the base really is to re-seed AMCL. Run it whenever the base is moved by hand."
+    _description="Place a marker where the base really is, refine AMCL without moving, and accept only a pose that fits the lidar scan. On rejection, re-publish the previous estimate. Keep the base stationary; after cancelling, run localization again."
     _favorite="true"
   >
     <Control ID="Sequence">
-      <!-- The marker starts above the base so it is visible; its height is ignored. -->
+      <!--The marker starts above the base so it is visible; its height is ignored.-->
       <Action
         ID="GetLatestTransform"
         target_frame_id="map"
@@ -33,7 +33,7 @@
       />
       <Action
         ID="AdjustPoseWithIMarker"
-        prompts="Move the marker over where the base really is, X axis forward. Height is ignored."
+        prompts="Move the marker over where the base really is, X axis forward. Height is ignored. Keep the base stationary until this Objective finishes."
         initial_poses="{marker_poses}"
         adjusted_poses="{adjusted_poses}"
       />
@@ -44,18 +44,36 @@
         element="{initial_pose}"
       />
       <Action
-        ID="SetInitialPose"
-        pose="{initial_pose}"
-        global_frame_id="map"
-        robot_frame_id="base_link"
+        ID="TransformPoseFrame"
+        name="TransformPoseFrame"
+        output_pose="{initial_pose}"
+        target_frame_id="map"
+        input_pose="{initial_pose}"
+      />
+      <Action
+        ID="GetLatestTransform"
+        name="Remember the previous estimate"
+        target_frame_id="map"
+        source_frame_id="base_link"
+        transform="{restore_transform}"
+      />
+      <Action
+        ID="ConvertTransformStampedToPoseStamped"
+        transform_stamped="{restore_transform}"
+        pose_stamped="{restore_pose}"
+      />
+      <SubTree
+        ID="Refine Localization In Place Subtree"
+        seed_pose="{initial_pose}"
+        restore_pose="{restore_pose}"
       />
     </Control>
   </BehaviorTree>
   <TreeNodesModel>
     <SubTree ID="Localize Robot">
       <MetadataFields>
-        <Metadata subcategory="Navigation" />
         <Metadata runnable="true" />
+        <Metadata subcategory="Navigation" />
       </MetadataFields>
     </SubTree>
   </TreeNodesModel>

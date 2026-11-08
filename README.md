@@ -25,6 +25,19 @@ Mock and sim:
 The base is three planar joints, x, y and yaw. Every controller commands their
 velocity, so only one runs at a time; the Objectives switch between them.
 
+### Localization
+
+`Localize Robot` uses the marker as an initial guess, not an accepted location.
+Keep the base stationary. It requests AMCL updates without moving and accepts
+only an estimate whose lidar scans fit the map. A rejected attempt re-publishes
+the previous estimate and returns failure.
+
+This uses the current AMCL instance, so `map -> odom` can change during the
+attempt. Cancelling skips the failure restore: run localization again before
+navigating. Restore re-seeds the previous pose, not its original particle cloud.
+The scan-fit settings are provisional for suite_106; see
+[docs/AGENT_COMMENTS.md](docs/AGENT_COMMENTS.md).
+
 ## Known limit on the real robot
 
 The pinned AgileX driver ignores the requested turn whenever the sideways

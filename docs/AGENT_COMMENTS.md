@@ -89,6 +89,39 @@ by line. Keep each entry short, and keep it true when the code changes.
 - **Velocity.** Nav2's final twist goes to `/base_cmd_vel`, not `/cmd_vel`,
   because on hw the AgileX driver owns `/cmd_vel` before its remap.
 
+## src/agilex_ranger_mini_mock/objectives/localize_robot.xml
+
+- **:54-70 Prior estimate.** Capture the map-frame base pose after marker
+  acceptance and before reseeding. Failure to read it stops without changing
+  AMCL. No first-start fallback or simulator-frame relabel is added here.
+- **:5 Marker coordinates.** Transforming a marker from the corrected `world`
+  visualization to `map` uses the old localization correction. Place against
+  the map; placing against the displayed robot alone is not independent truth.
+
+## src/agilex_ranger_mini_mock/objectives/refine_localization_in_place_subtree.xml
+
+- **:9-21 Input guard.** Reject unbounded or empty loops and a disabled fit
+  gate before publishing a seed. The gate cannot be changed to report-only.
+- **:32-53 In-place updates.** Each no-motion request is followed by a new scan
+  and a short processing interval. Service replies alone can collapse into one
+  pending update. Scan arrival and a wait are not an AMCL acknowledgement.
+- **:60-97 Acceptance.** Require repeated fresh scans to fit the refined TF
+  estimate, never the marker seed. Pro 10.2.0's ScanMatchResidual also refuses
+  too few usable returns.
+- **:168-173 Provisional gate.** At the recorded suite_106 spawn, every usable
+  beam fitted the true pose and about a third fitted the incorrect estimate.
+  The defaults separate that capture, but are not calibrated across the room
+  or on hardware. Repeated geometry can still admit a wrong pose.
+- **:109-145 Restore.** Re-publish the pre-attempt pose and try to synchronize
+  with another scan. AMCL can alter `map -> odom` during the attempt; restore
+  is not atomic and re-seeds a new cloud rather than restoring covariance.
+- **:5 Cancellation and motion.** Keep the base stationary. A halt bypasses
+  the fallback, so cancellation does not restore; run localization again.
+  No controller or odometry reset is performed.
+- **:23-29 Version.** Behavior IDs and ports were checked against the Pro 10.2.0
+  release source, installed headers, and the node model on Vish. The checked-out
+  main worktree has an older Nav behavior set; no new C++ is needed.
+
 ## src/agilex_ranger_mini_mock/scripts/planar_base_bridge.py
 
 - **Why a bridge.** No Jazzy ros2_controllers drive controller fits a
