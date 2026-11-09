@@ -23,7 +23,7 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, LogInfo
 from launch.conditions import IfCondition, UnlessCondition
 from launch.launch_description_sources import AnyLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration, PythonExpression
+from launch.substitutions import EqualsSubstitution, LaunchConfiguration
 from launch_ros.actions import Node
 from nav2_common.launch import RewrittenYaml
 
@@ -57,7 +57,7 @@ def generate_launch_description():
     with open(os.path.join(hw_share, "config", "initial_positions.yaml")) as f:
         initial_positions = yaml.safe_load(f)
     lidar_launch_file = LaunchConfiguration("lidar_launch_file")
-    no_lidar = PythonExpression(["'", lidar_launch_file, "' == ''"])
+    no_lidar = EqualsSubstitution(lidar_launch_file, "")
 
     declared = [
         DeclareLaunchArgument(
@@ -116,7 +116,7 @@ def generate_launch_description():
     )
     no_lidar_warning = LogInfo(
         condition=IfCondition(no_lidar),
-        msg="agilex_ranger_mini_hw: no lidar_launch_file given, so AMCL and the costmaps get no scan.",
+        msg="agilex_ranger_mini_hw: WARNING: no lidar_launch_file given, so AMCL, localization and the costmaps get no scan.",
     )
     nav2_params = RewrittenYaml(
         source_file=os.path.join(mock_share, "params", "nav2_params.yaml"),

@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<root
+  BTCPP_format="4"
+  main_tree_to_execute="Get AMCL Estimate After Scan Subtree"
+>
+  <BehaviorTree
+    ID="Get AMCL Estimate After Scan Subtree"
+    _description="Read the base pose in map once TF carries the AMCL correction formed from the given scan. Fail if TF does not catch up in time."
+    _favorite="false"
+  >
+    <Control ID="Sequence">
+      <Action
+        ID="UnpackLaserScanMessage"
+        laser_scan="{scan}"
+        header="{scan_header}"
+      />
+      <Action
+        ID="UnpackHeaderMessage"
+        header="{scan_header}"
+        stamp="{scan_stamp}"
+      />
+      <Action
+        ID="UnpackTimeMessage"
+        time="{scan_stamp}"
+        sec="{scan_sec}"
+        nanosec="{scan_nanosec}"
+      />
+      <Decorator ID="RetryUntilSuccessful" num_attempts="40">
+        <Control ID="Sequence">
+          <Action
+            ID="GetLatestTransform"
+            target_frame_id="map"
+            source_frame_id="base_link"
+            transform="{transform}"
+          />
+          <Action
+            ID="UnpackTransformStampedMessage"
+            transform_stamped="{transform}"
+            header="{tf_header}"
+            transform="{tf_transform_body}"
+          />
+          <Action
+            ID="UnpackHeaderMessage"
+            header="{tf_header}"
+            stamp="{tf_stamp}"
+          />
+          <Action
+            ID="UnpackTimeMessage"
+            time="{tf_stamp}"
+            sec="{tf_sec}"
+            nanosec="{tf_nanosec}"
+          />
+          <Control
+            ID="Fallback"
+            name="TF carries the correction from this scan"
+          >
+            <Condition
+              ID="ScriptCondition"
+              code="(tf_sec - scan_sec) + (tf_nanosec - scan_nanosec) / 1000000000.0 &gt;= transform_tolerance"
+            />
+            <Control ID="Sequence">
+              <Action ID="WaitForDuration" delay_duration="0.100000" />
+              <Action ID="AlwaysFailure" />
+            </Control>
+          </Control>
+        </Control>
+      </Decorator>
+    </Control>
+  </BehaviorTree>
+  <TreeNodesModel>
+    <SubTree ID="Get AMCL Estimate After Scan Subtree">
+      <MetadataFields>
+        <Metadata runnable="false" />
+        <Metadata subcategory="Navigation" />
+      </MetadataFields>
+      <input_port name="scan" type="sensor_msgs::msg::LaserScan">
+        Scan whose AMCL correction must be in TF.
+      </input_port>
+      <input_port name="transform_tolerance" type="double">
+        AMCL's transform_tolerance: how far ahead of its scan AMCL stamps map to
+        odom, in seconds.
+      </input_port>
+      <output_port name="transform" type="geometry_msgs::msg::TransformStamped">
+        Base pose in map, resolved at or after the scan stamp plus the
+        tolerance.
+      </output_port>
+    </SubTree>
+  </TreeNodesModel>
+</root>

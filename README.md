@@ -28,9 +28,12 @@ velocity, so only one runs at a time; the Objectives switch between them.
 ### Localization
 
 `Localize Robot` uses the marker as an initial guess, not an accepted location.
-Keep the base stationary. It requests AMCL updates without moving and accepts
-only an estimate whose lidar scans fit the map. A rejected attempt re-publishes
-the previous estimate and returns failure.
+Align the marker with the map walls, not with the robot model: the model shows
+the current estimate, so a marker left on it re-seeds that estimate. Keep the
+base stationary. It requests AMCL updates without moving and accepts
+only an estimate whose lidar scans fit the map. Each check waits until TF
+carries the estimate AMCL formed from the checked scan. A rejected attempt
+re-publishes the previous estimate and returns failure.
 
 This uses the current AMCL instance, so `map -> odom` can change during the
 attempt. Cancelling skips the failure restore: run localization again before
@@ -56,8 +59,10 @@ moveit_pro build user_workspace -w ~/agilex_ws
 moveit_pro run -c agilex_ranger_mini_sim -w ~/agilex_ws
 ```
 
-Use `-c agilex_ranger_mini_mock` for mock hardware. The meshes are stored with
-Git LFS, so run `git lfs pull` if the robot shows no body.
+Use `-c agilex_ranger_mini_mock` for mock hardware. The meshes and the
+suite_106 map image are stored with Git LFS. Run `git lfs pull` before the
+build if the robot shows no body, or if map_server fails to load the map, which
+leaves AMCL and Nav2 without a map.
 
 To change the robot model or the map, edit the mock package and regenerate the
 sim's MuJoCo files with `scripts/generate_mjcf.py` in `agilex_ranger_mini_sim`.

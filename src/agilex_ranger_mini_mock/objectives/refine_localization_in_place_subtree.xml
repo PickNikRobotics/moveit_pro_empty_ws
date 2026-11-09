@@ -1,21 +1,24 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<root BTCPP_format="4" main_tree_to_execute="Refine Localization In Place Subtree">
+<root
+  BTCPP_format="4"
+  main_tree_to_execute="Refine Localization In Place Subtree"
+>
   <BehaviorTree
     ID="Refine Localization In Place Subtree"
-    _description="Seed AMCL, request updates without motion, and accept the result only when fresh scans fit the map. On failure, re-publish restore_pose and fail. Keep the base stationary; cancelling skips restore."
+    _description="Seed AMCL, request updates without motion, and accept the result only when fresh scans fit the estimate AMCL formed from them. On failure, re-publish restore_pose and fail. Keep the base stationary; cancelling skips restore."
     _favorite="false"
   >
     <Control ID="Sequence">
       <Control ID="Fallback" name="Check the refinement settings">
         <Condition
           ID="ScriptCondition"
-          code="num_updates &gt; 0 &amp;&amp; num_updates &lt;= 100 &amp;&amp; num_checks &gt; 0 &amp;&amp; num_checks &lt;= 10 &amp;&amp; inlier_distance &gt; 0 &amp;&amp; inlier_distance &lt; 2 &amp;&amp; min_inlier_fraction &gt; 0 &amp;&amp; min_inlier_fraction &lt;= 1"
+          code="num_updates &gt; 0 &amp;&amp; num_updates &lt;= 100 &amp;&amp; num_checks &gt; 0 &amp;&amp; num_checks &lt;= 10 &amp;&amp; inlier_distance &gt; 0 &amp;&amp; inlier_distance &lt; 2 &amp;&amp; min_inlier_fraction &gt; 0 &amp;&amp; min_inlier_fraction &lt;= 1 &amp;&amp; amcl_transform_tolerance &gt;= 0 &amp;&amp; amcl_transform_tolerance &lt;= 3"
         />
         <Control ID="Sequence">
           <Action
             ID="LogMessage"
             log_level="error"
-            message="Invalid localization settings: update and check counts must be bounded and positive, and the scan-fit gate must be enabled. AMCL was not seeded."
+            message="Invalid localization settings: update and check counts must be bounded and positive, the scan-fit gate must be enabled, and the AMCL transform tolerance must be bounded. AMCL was not seeded."
           />
           <Action ID="AlwaysFailure" />
         </Control>
@@ -30,7 +33,10 @@
       <Control ID="Fallback" name="Refine and check, or restore and fail">
         <Control ID="Sequence" name="Refine and check">
           <Action ID="WaitForDuration" delay_duration="0.300000" />
-          <Decorator ID="RepeatUnlessFailureEachTick" num_cycles="{num_updates}">
+          <Decorator
+            ID="RepeatUnlessFailureEachTick"
+            num_cycles="{num_updates}"
+          >
             <Control ID="Sequence">
               <Action
                 ID="CallEmptyService"
@@ -67,12 +73,11 @@
                 publisher_timeout_sec="2.000000"
                 message_out="{check_scan}"
               />
-              <Action ID="WaitForDuration" delay_duration="0.150000" />
-              <Action
-                ID="GetLatestTransform"
-                name="Read the refined estimate"
-                target_frame_id="map"
-                source_frame_id="base_link"
+              <SubTree
+                ID="Get AMCL Estimate After Scan Subtree"
+                name="Read the estimate AMCL formed from that scan"
+                scan="{check_scan}"
+                transform_tolerance="{amcl_transform_tolerance}"
                 transform="{refined_transform}"
               />
               <Action
@@ -104,7 +109,7 @@
           <Action
             ID="LogMessage"
             log_level="error"
-            message="Localization rejected: refinement or the scan-fit check failed. Re-publishing the previous estimate."
+            message="Localization rejected: refinement or the scan-fit check failed. Re-publishing the previous estimate. Align the seed with the map walls, not with the displayed robot model."
           />
           <Action
             ID="SetInitialPose"
@@ -113,7 +118,10 @@
             global_frame_id="map"
             robot_frame_id="base_link"
           />
-          <Control ID="Fallback" name="Synchronize restore, or report it unconfirmed">
+          <Control
+            ID="Fallback"
+            name="Synchronize restore, or report it unconfirmed"
+          >
             <Control ID="Sequence">
               <Action ID="WaitForDuration" delay_duration="0.300000" />
               <Action
@@ -129,17 +137,23 @@
                 publisher_timeout_sec="2.000000"
                 message_out="{restore_scan}"
               />
-              <Action ID="WaitForDuration" delay_duration="0.150000" />
+              <SubTree
+                ID="Get AMCL Estimate After Scan Subtree"
+                name="Wait until TF carries the re-published estimate"
+                scan="{restore_scan}"
+                transform_tolerance="{amcl_transform_tolerance}"
+                transform="{restored_transform}"
+              />
               <Action
                 ID="LogMessage"
                 log_level="warn"
-                message="The previous estimate was re-published and a lidar scan arrived. Localization remains rejected."
+                message="The previous estimate was re-published and TF now carries AMCL's estimate from after it. Localization remains rejected."
               />
             </Control>
             <Action
               ID="LogMessage"
               log_level="error"
-              message="The previous estimate was re-published, but no update or scan was confirmed. Check AMCL and lidar before navigating."
+              message="The previous estimate was re-published, but no update, scan or matching TF was confirmed. Check AMCL and lidar before navigating."
             />
           </Control>
           <Action ID="AlwaysFailure" />
@@ -170,6 +184,9 @@
       </input_port>
       <input_port name="min_inlier_fraction" default="0.8" type="double">
         Minimum fraction of usable beams that must fit the map.
+      </input_port>
+      <input_port name="amcl_transform_tolerance" default="1.0" type="double">
+        AMCL's transform_tolerance in the Nav2 parameters, in seconds.
       </input_port>
     </SubTree>
   </TreeNodesModel>

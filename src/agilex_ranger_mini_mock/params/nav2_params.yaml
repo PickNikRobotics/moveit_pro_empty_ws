@@ -217,7 +217,8 @@ local_costmap:
         inflation_radius: 0.55
       always_send_full_costmap: true
 
-# The suite_106 costmap: the map's walls, live lidar obstacles and inflation.
+# The suite_106 costmap: the map's walls and inflation only. Global plans ignore
+# obstacles that are not in the map; the local costmap sees them.
 global_costmap:
   global_costmap:
     ros__parameters:
@@ -234,6 +235,7 @@ global_costmap:
         plugin: "nav2_costmap_2d::StaticLayer"
         map_subscribe_transient_local: true
         map_topic: /map
+      # Inactive: not in plugins above. Kept for a tuner who adds it back.
       obstacle_layer:
         plugin: "nav2_costmap_2d::ObstacleLayer"
         enabled: true

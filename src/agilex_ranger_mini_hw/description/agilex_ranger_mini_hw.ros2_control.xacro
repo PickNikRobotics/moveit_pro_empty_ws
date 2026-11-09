@@ -16,7 +16,8 @@
     fires when the controller manager stops.
 
     @param name Name of the ros2_control block.
-    @param initial_positions Unused: the driver's odometry sets the pose.
+    @param initial_positions Planar state values until the first joint states
+      arrive; then the driver's odometry sets the pose.
   -->
   <xacro:macro name="agilex_ranger_mini_ros2_control" params="name initial_positions">
     <ros2_control name="${name}" type="system">

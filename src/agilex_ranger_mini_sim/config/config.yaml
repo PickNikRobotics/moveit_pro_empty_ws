@@ -17,7 +17,7 @@ hardware:
           package: "agilex_ranger_mini_sim"
           path: "description/agilex_ranger_mini_sim.ros2_control.xacro"
       - mujoco_model: "mjcf/scene.xml"
-      # Set to true locally to open the MuJoCo viewer window.
+      # Opens the MuJoCo viewer window, which needs a display; set false on headless hosts.
       - mujoco_viewer: true
 
   additional_driver_launch_file:

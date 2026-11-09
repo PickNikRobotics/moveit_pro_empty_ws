@@ -82,3 +82,53 @@ def test_lidar_ignores_a_joint_state_without_positions():
     assert holder._pose is None
     lidar.MockLidar._on_joints(holder, FakeJointState(names, [1.0, 2.0, 0.5], []))
     assert holder._pose == (1.0, 2.0, 0.5)
+
+
+@pytest.fixture
+def base_bridge():
+    """A real bridge node whose command output is captured instead of sent."""
+    import rclpy
+
+    rclpy.init()
+    node = bridge.PlanarBaseBridge()
+    sent = []
+    node._command_pub = type(
+        "P", (), {"publish": lambda _, m: sent.append(list(m.data))}
+    )()
+    yield node, sent
+    node.destroy_node()
+    rclpy.shutdown()
+
+
+def twist(vx, vy, wz):
+    from geometry_msgs.msg import Twist
+
+    msg = Twist()
+    msg.linear.x, msg.linear.y, msg.angular.z = vx, vy, wz
+    return msg
+
+
+@pytest.mark.parametrize("bad", [math.nan, math.inf, -math.inf])
+@pytest.mark.parametrize("axis", [0, 1, 2])
+def test_non_finite_twist_stops_the_base(base_bridge, bad, axis):
+    from sensor_msgs.msg import JointState
+
+    node, sent = base_bridge
+    joints = JointState()
+    joints.name = list(bridge.PLANAR_JOINTS)
+    joints.position, joints.velocity = [1.0, 2.0, 0.3], [0.0, 0.0, 0.0]
+    node._on_joints(joints)
+
+    node._on_twist(twist(0.2, 0.1, 0.4))
+    node._tick()
+    assert sent[-1] == pytest.approx(list(bridge.body_to_world(0.2, 0.1, 0.4, 0.3)))
+
+    values = [0.2, 0.1, 0.4]
+    values[axis] = bad
+    node._on_twist(twist(*values))
+    node._tick()
+    assert sent[-1] == [0.0, 0.0, 0.0]
+
+    node._on_twist(twist(0.2, 0.1, 0.4))
+    node._tick()
+    assert all(math.isfinite(v) for v in sent[-1]) and any(sent[-1])

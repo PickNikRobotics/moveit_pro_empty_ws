@@ -14,6 +14,8 @@
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <exec_depend>agilex_ranger_mini_mock</exec_depend>
+  <exec_depend>ament_index_python</exec_depend>
+  <exec_depend>launch</exec_depend>
   <exec_depend>picknik_mujoco_ros</exec_depend>
 
   <test_depend>agilex_ranger_mini_mock</test_depend>

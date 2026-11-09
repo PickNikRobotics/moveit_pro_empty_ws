@@ -11,6 +11,8 @@ import xacro
 import yaml
 from ament_index_python.packages import get_package_share_directory
 from builtin_interfaces.msg import Time
+from ranger_msgs.msg import SystemState
+from std_msgs.msg import Float64MultiArray
 
 PACKAGE = Path(__file__).resolve().parents[1]
 PLANAR_JOINTS = ["linear_x_joint", "linear_y_joint", "rotational_yaw_joint"]
@@ -249,19 +251,62 @@ class FakePublisher:
         self.sent.append(msg)
 
 
-def make_node():
-    """A bridge with fake time and output, without ROS."""
-    node = bridge.RangerDriverBridge.__new__(bridge.RangerDriverBridge)
-    node._clock_fake = FakeClock()
-    node.get_clock = lambda: node._clock_fake
-    node.get_logger = lambda: type("L", (), {"warn": lambda *a, **k: None})()
-    node._twist_pub, node._state_pub = FakePublisher(), FakePublisher()
-    node._timeout_ns, node._odom_timeout_ns = int(0.25e9), int(0.5e9)
-    node._period_ns, node._limits = int(0.02e9), LIMITS
-    node._headings = bridge.deque(maxlen=25)
-    node._yaw = node._last_command_ns = node._last_odom_ns = None
-    node._last_publish_ns = node._last_twist = None
-    return node
+@pytest.fixture
+def ros():
+    import rclpy
+
+    rclpy.init()
+    yield
+    rclpy.shutdown()
+
+
+@pytest.fixture
+def make_node(ros):
+    """Real bridges with their default parameters, fake time and captured output."""
+    nodes = []
+
+    def make():
+        node = bridge.RangerDriverBridge()
+        node._clock_fake = FakeClock()
+        node._clock_fake.ns = 1_000_000_000
+        node.get_clock = lambda: node._clock_fake
+        node._twist_pub, node._state_pub = FakePublisher(), FakePublisher()
+        nodes.append(node)
+        return node
+
+    yield make
+    for node in nodes:
+        node.destroy_node()
+
+
+def system_state(vehicle_state=0, control_mode=1, error_code=0):
+    msg = SystemState()
+    msg.vehicle_state = vehicle_state
+    msg.control_mode = control_mode
+    msg.error_code = error_code
+    return msg
+
+
+def ready(node, state=None):
+    """Feed every input the motion gate waits for, as of the node's current time."""
+    node._on_odom(odom())
+    node._on_system_state(state or system_state())
+    node._on_planar_command(Float64MultiArray())
+
+
+STOP = FakeJointState(PLANAR_JOINTS, [0.0, 0.0, 0.0])
+
+
+def armed(node, state=None):
+    """Ready the gate, send the zero command a stop needs, then drop that output."""
+    ready(node, state)
+    node._on_command(STOP)
+    node._clock_fake.ns += node._period_ns
+    node._twist_pub.sent.clear()
+
+
+def sent_twists(node):
+    return [(m.linear.x, m.linear.y, m.angular.z) for m in node._twist_pub.sent]
 
 
 def odom(yaw=0.0, x=0.0):
@@ -285,14 +330,15 @@ def odom(yaw=0.0, x=0.0):
     return msg
 
 
-def test_rate_limit_applies_to_stops_too():
+def test_rate_limit_applies_to_stops_too(make_node):
     """Moving twists and stops pass once per period; the first stop passes at once."""
     node = make_node()
-    node._on_odom(odom())
-    sent = []
     clock = node._clock_fake
+    armed(node)
+    start = clock.ns
+    sent = []
     node._twist_pub.publish = lambda m: sent.append(
-        (clock.ns // 1_000_000, m.linear.x, m.linear.y, m.angular.z)
+        ((clock.ns - start) // 1_000_000, m.linear.x, m.linear.y, m.angular.z)
     )
     # Commands arrive every 5 ms: three moving, then stops. The first stop at
     # 15 ms is inside the period of the 0 ms twist, and still passes.
@@ -307,7 +353,176 @@ def test_rate_limit_applies_to_stops_too():
     ]
 
 
-def test_non_finite_odometry_is_dropped():
+MOVE = FakeJointState(PLANAR_JOINTS, [0.2, 0.0, 0.0])
+
+
+def test_a_ready_base_gets_the_command(make_node):
+    node = make_node()
+    armed(node)
+    node._on_command(MOVE)
+    assert sent_twists(node) == [(0.2, 0.0, 0.0)]
+
+
+@pytest.mark.parametrize(
+    "state",
+    [
+        system_state(vehicle_state=SystemState.VEHICLE_STATE_ESTOP),
+        system_state(vehicle_state=SystemState.VEHICLE_STATE_EXCEPTION),
+        system_state(control_mode=SystemState.CONTROL_MODE_RC),
+        system_state(control_mode=2),
+        system_state(error_code=0x0100),
+        system_state(error_code=0x0002 | 0x0004),
+        system_state(error_code=0x8000),
+    ],
+)
+def test_a_base_not_fit_to_move_gets_zero(make_node, state):
+    node = make_node()
+    ready(node, state)
+    node._on_command(MOVE)
+    assert sent_twists(node) == [(0.0, 0.0, 0.0)]
+
+
+def test_a_battery_warning_alone_does_not_stop_the_base(make_node):
+    node = make_node()
+    armed(node, system_state(error_code=0x0002))
+    node._on_command(MOVE)
+    assert sent_twists(node) == [(0.2, 0.0, 0.0)]
+
+
+@pytest.mark.parametrize(
+    "fault",
+    [
+        system_state(vehicle_state=SystemState.VEHICLE_STATE_ESTOP),
+        system_state(control_mode=SystemState.CONTROL_MODE_RC),
+        system_state(error_code=0x0100),
+    ],
+)
+def test_a_held_command_does_not_restart_the_base_after_a_fault(make_node, fault):
+    """ros2_control keeps sending the held command; only a zero one re-arms."""
+    node = make_node()
+    clock = node._clock_fake
+    armed(node)
+    node._on_command(MOVE)
+    for state in (fault, system_state(), system_state()):
+        clock.ns += 30_000_000
+        ready(node, state)
+        node._on_command(MOVE)
+    clock.ns += 30_000_000
+    node._on_command(STOP)
+    clock.ns += 30_000_000
+    node._on_command(MOVE)
+    assert sent_twists(node) == [
+        (0.2, 0.0, 0.0),
+        (0.0, 0.0, 0.0),
+        (0.0, 0.0, 0.0),
+        (0.0, 0.0, 0.0),
+        (0.0, 0.0, 0.0),
+        (0.2, 0.0, 0.0),
+    ]
+
+
+def test_blocked_commands_keep_the_arrival_watchdog_alive(make_node):
+    """A mode fault blocks motion without reporting healthy command traffic as lost."""
+    node = make_node()
+    clock = node._clock_fake
+    warnings = []
+    logger = type(
+        "Logger", (), {"warn": lambda _self, text, **_: warnings.append(text)}
+    )()
+    node.get_logger = lambda: logger
+    armed(node)
+    node._on_command(MOVE)
+    fault = system_state(vehicle_state=SystemState.VEHICLE_STATE_ESTOP)
+    period_ns = node._timeout_ns // 2
+    for _ in range(4):
+        clock.ns += period_ns
+        ready(node, fault)
+        node._on_command(MOVE)
+        node._watchdog()
+    assert sent_twists(node)[0] == (0.2, 0.0, 0.0)
+    assert set(sent_twists(node)[1:]) == {(0.0, 0.0, 0.0)}
+    assert len(warnings) == 4
+    assert all("vehicle state" in message for message in warnings)
+
+    clock.ns += node._timeout_ns + 1
+    node._watchdog()
+    assert warnings[-1] == "Joint commands stopped; sent a zero twist to the driver."
+    assert node._needs_zero_command is True
+    assert sent_twists(node)[-1] == (0.0, 0.0, 0.0)
+
+
+def test_a_new_bridge_waits_for_a_zero_command(make_node):
+    node = make_node()
+    ready(node)
+    node._on_command(MOVE)
+    assert sent_twists(node) == [(0.0, 0.0, 0.0)]
+    node._clock_fake.ns += node._period_ns
+    node._on_command(STOP)
+    node._clock_fake.ns += node._period_ns
+    node._on_command(MOVE)
+    assert sent_twists(node)[-1] == (0.2, 0.0, 0.0)
+
+
+@pytest.mark.parametrize("bad", [math.nan, math.inf, 1e-6])
+def test_only_a_finite_zero_command_re_arms(make_node, bad):
+    node = make_node()
+    ready(node)
+    node._on_command(FakeJointState(PLANAR_JOINTS, [0.0, bad, 0.0]))
+    node._clock_fake.ns += node._period_ns
+    node._on_command(MOVE)
+    assert set(sent_twists(node)) == {(0.0, 0.0, 0.0)}
+
+
+def test_commands_resuming_after_the_watchdog_need_a_zero_command(make_node):
+    node = make_node()
+    clock = node._clock_fake
+    armed(node)
+    node._on_command(MOVE)
+    clock.ns += node._timeout_ns + 10_000_000
+    node._watchdog()
+    clock.ns += node._period_ns
+    ready(node)
+    node._on_command(MOVE)
+    assert sent_twists(node) == [(0.2, 0.0, 0.0), (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)]
+
+
+@pytest.mark.parametrize("missing", ["odom", "system state", "planar commands"])
+def test_each_input_must_have_arrived(make_node, missing):
+    node = make_node()
+    if missing != "odom":
+        node._on_odom(odom())
+    if missing != "system state":
+        node._on_system_state(system_state())
+    if missing != "planar commands":
+        node._on_planar_command(Float64MultiArray())
+    node._on_command(MOVE)
+    assert sent_twists(node) == [(0.0, 0.0, 0.0)]
+
+
+@pytest.mark.parametrize(
+    "silent, after_s",
+    [("odom", 0.6), ("system state", 0.6), ("planar commands", 0.3)],
+)
+def test_a_silent_input_stops_a_held_command(make_node, silent, after_s):
+    """The held command keeps arriving from ros2_control; a silent input stops it."""
+    node = make_node()
+    armed(node)
+    node._on_command(MOVE)
+    clock = node._clock_fake
+    for _ in range(int(after_s / 0.01)):
+        clock.ns += 10_000_000
+        if silent != "odom":
+            node._on_odom(odom())
+        if silent != "system state":
+            node._on_system_state(system_state())
+        if silent != "planar commands":
+            node._on_planar_command(Float64MultiArray())
+        node._on_command(MOVE)
+    assert sent_twists(node)[0] == (0.2, 0.0, 0.0)
+    assert sent_twists(node)[-1] == (0.0, 0.0, 0.0)
+
+
+def test_non_finite_odometry_is_dropped(make_node):
     node = make_node()
     node._on_odom(odom(yaw=0.2))
     node._on_odom(odom(yaw=math.nan))
@@ -318,11 +533,7 @@ def test_non_finite_odometry_is_dropped():
 
 def test_amcl_rewrites_name_existing_float_parameters():
     """A typo in a rewrite path, or an integer, would break AMCL only on hw."""
-    spec = importlib.util.spec_from_file_location(
-        "hw_drivers", PACKAGE / "launch/hw_drivers.launch.py"
-    )
-    launch = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(launch)
+    launch = load_hw_launch()
     mock = PACKAGE.parent / "agilex_ranger_mini_mock"
     nav2 = yaml.safe_load((mock / "params/nav2_params.yaml").read_text())
     for path, value in launch.amcl_hw_rewrites({j: 0 for j in PLANAR_JOINTS}).items():
@@ -334,24 +545,69 @@ def test_amcl_rewrites_name_existing_float_parameters():
             assert "." in value, f"{path} must be written as a float"
 
 
-def test_bridge_ceilings_match_the_urdf(urdf):
-    import rclpy
+def test_bridge_ceilings_are_the_operating_limits(urdf, make_node):
+    """The clamp passes every planned or navigated command and stays below the URDF."""
+    max_linear, max_angular = make_node()._limits
+    mock = PACKAGE.parent / "agilex_ranger_mini_mock"
+    planned = yaml.safe_load((mock / "config/moveit/joint_limits.yaml").read_text())
+    planned = {j: planned["joint_limits"][j]["max_velocity"] for j in PLANAR_JOINTS}
+    assert max_linear == math.hypot(
+        planned["linear_x_joint"], planned["linear_y_joint"]
+    )
+    assert max_angular == planned["rotational_yaw_joint"]
 
-    rclpy.init()
-    try:
-        node = bridge.RangerDriverBridge()
-        defaults = node._limits
-        node.destroy_node()
-    finally:
-        rclpy.shutdown()
-    limits = {
+    nav2 = yaml.safe_load((mock / "params/nav2_params.yaml").read_text())
+    smoother = nav2["velocity_smoother"]["ros__parameters"]
+    for bound in (smoother["max_velocity"], smoother["min_velocity"]):
+        assert math.hypot(bound[0], bound[1]) <= max_linear
+        assert abs(bound[2]) <= max_angular
+
+    ceiling = {
         j.get("name"): float(j.find("limit").get("velocity"))
         for j in urdf.findall("joint")
         if j.get("name") in PLANAR_JOINTS
     }
-    assert defaults[0] == limits["linear_x_joint"] == limits["linear_y_joint"]
-    assert defaults[1] == limits["rotational_yaw_joint"]
-    assert defaults == LIMITS
+    assert max_linear < min(ceiling["linear_x_joint"], ceiling["linear_y_joint"])
+    assert max_angular < ceiling["rotational_yaw_joint"]
+
+
+def test_a_large_tracking_command_is_clamped_to_the_operating_limits(make_node):
+    node = make_node()
+    armed(node)
+    node._on_command(FakeJointState(PLANAR_JOINTS, [3.0, 4.0, 9.0]))
+    [(vx, vy, wz)] = sent_twists(node)
+    assert math.hypot(vx, vy) == pytest.approx(node._limits[0])
+    assert wz == node._limits[1]
+
+
+def load_hw_launch():
+    spec = importlib.util.spec_from_file_location(
+        "hw_drivers", PACKAGE / "launch/hw_drivers.launch.py"
+    )
+    launch = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(launch)
+    return launch
+
+
+@pytest.mark.parametrize(
+    "lidar, included", [("", False), ('/opt/it\'s "a" lidar.launch.py', True)]
+)
+def test_lidar_include_follows_the_argument(lidar, included):
+    from launch import LaunchContext
+    from launch.actions import IncludeLaunchDescription, LogInfo
+
+    description = load_hw_launch().generate_launch_description()
+    context = LaunchContext()
+    context.launch_configurations["lidar_launch_file"] = lidar
+    includes = [
+        e
+        for e in description.entities
+        if isinstance(e, IncludeLaunchDescription) and e.condition is not None
+    ]
+    warnings = [e for e in description.entities if isinstance(e, LogInfo)]
+    assert len(includes) == 1 and len(warnings) == 1
+    assert includes[0].condition.evaluate(context) is included
+    assert warnings[0].condition.evaluate(context) is not included
 
 
 def test_hw_waypoints_stay_at_the_odometry_origin():

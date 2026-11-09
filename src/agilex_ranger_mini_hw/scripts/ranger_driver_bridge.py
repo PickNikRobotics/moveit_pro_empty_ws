@@ -8,6 +8,11 @@ State: the driver publishes wheel odometry. This node writes it back as the
 planar joint states, with the yaw unwrapped so the continuous joint never jumps.
 The steering and wheel joints report zero: the driver publishes no angles.
 
+Gate: a command passes only while the driver's odometry and system state are
+recent, the base reports normal CAN control, and planar_base_bridge.py
+publishes. Otherwise the driver gets a zero twist. After any stop, motion
+waits for a zero command before it may start again.
+
 UNTESTED ON HARDWARE. See the hw package README before the first run.
 """
 
@@ -18,7 +23,9 @@ import rclpy
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
+from ranger_msgs.msg import SystemState
 from sensor_msgs.msg import JointState
+from std_msgs.msg import Float64MultiArray
 
 PLANAR_JOINTS = ("linear_x_joint", "linear_y_joint", "rotational_yaw_joint")
 STATE_JOINTS = tuple(f"{c}_steering_joint" for c in ("fl", "fr", "rl", "rr")) + tuple(
@@ -51,6 +58,29 @@ def commanded_planar_velocity(msg):
     if any(name not in rates for name in PLANAR_JOINTS):
         return None
     return tuple(rates[name] for name in PLANAR_JOINTS)
+
+
+def system_state_fault(state, allowed_error_mask):
+    """Say why the driver's reported state forbids motion.
+
+    @param state A ranger_msgs/SystemState from the driver.
+    @param allowed_error_mask Error code bits that do not forbid motion.
+    @return A reason, or None when the base is normal, under CAN control and
+      reports no other error bit.
+    """
+    if state.vehicle_state != SystemState.VEHICLE_STATE_NORMAL:
+        return f"the driver reports vehicle state {state.vehicle_state}, not normal"
+    if state.control_mode != SystemState.CONTROL_MODE_CAN:
+        return f"the driver reports control mode {state.control_mode}, not CAN"
+    faults = state.error_code & ~allowed_error_mask
+    if faults:
+        return f"the driver reports error code 0x{faults:04x}"
+    return None
+
+
+def is_stop(rates):
+    """True when every commanded rate is finite and at rounding level."""
+    return all(abs(v) <= ROUNDING_NOISE for v in rates)
 
 
 def world_to_body(x_dot, y_dot, yaw_dot, yaw):
@@ -119,20 +149,37 @@ class RangerDriverBridge(Node):
             "driver_cmd_vel_topic", "/agilex_ranger_mini/driver/cmd_vel"
         )
         self.declare_parameter("driver_odom_topic", "/agilex_ranger_mini/driver/odom")
+        self.declare_parameter("system_state_topic", "/system_state")
+        self.declare_parameter(
+            "planar_command_topic", "/planar_velocity_controller/commands"
+        )
         # Stop the base when the controller manager stops publishing.
         self.declare_parameter("command_timeout_sec", 0.25)
         # Refuse to drive on a frozen pose when the driver stops publishing odometry.
         self.declare_parameter("odom_timeout_sec", 0.5)
+        # Refuse to drive unless the driver recently reported a base fit to move.
+        self.declare_parameter("system_state_timeout_sec", 0.5)
+        # Battery warning only; see AGENT_COMMENTS.md.
+        self.declare_parameter("allowed_error_mask", 0x0002)
+        # Refuse to drive when planar_base_bridge.py stops publishing.
+        self.declare_parameter("planar_command_timeout_sec", 0.25)
         # The driver runs slower than ros2_control; do not flood its queue.
         self.declare_parameter("min_publish_period_sec", 0.02)
-        # Ceilings of the planar joints in the URDF; test_hw_config.py checks they match.
-        self.declare_parameter("max_linear_velocity", 2.0)
-        self.declare_parameter("max_angular_velocity", 3.259)
+        # Operating limits of config/moveit/joint_limits.yaml; test_hw_config.py checks.
+        self.declare_parameter("max_linear_velocity", math.hypot(0.5, 0.5))
+        self.declare_parameter("max_angular_velocity", 1.0)
         # Published headings a command may have been built from; see AGENT_COMMENTS.md.
         self.declare_parameter("heading_history", 25)
 
         self._timeout_ns = int(1e9 * self.get_parameter("command_timeout_sec").value)
         self._odom_timeout_ns = int(1e9 * self.get_parameter("odom_timeout_sec").value)
+        self._state_timeout_ns = int(
+            1e9 * self.get_parameter("system_state_timeout_sec").value
+        )
+        self._planar_timeout_ns = int(
+            1e9 * self.get_parameter("planar_command_timeout_sec").value
+        )
+        self._allowed_error_mask = self.get_parameter("allowed_error_mask").value
         self._period_ns = int(1e9 * self.get_parameter("min_publish_period_sec").value)
         self._limits = tuple(
             self.get_parameter(name).value
@@ -142,8 +189,13 @@ class RangerDriverBridge(Node):
         self._yaw = None
         self._last_command_ns = None
         self._last_odom_ns = None
+        self._system_state = None
+        self._last_state_ns = None
+        self._last_planar_ns = None
         self._last_publish_ns = None
         self._last_twist = None
+        # A held command must not restart the base; see AGENT_COMMENTS.md.
+        self._needs_zero_command = True
 
         self._twist_pub = self.create_publisher(
             Twist, self.get_parameter("driver_cmd_vel_topic").value, 10
@@ -160,6 +212,18 @@ class RangerDriverBridge(Node):
         self.create_subscription(
             Odometry, self.get_parameter("driver_odom_topic").value, self._on_odom, 10
         )
+        self.create_subscription(
+            SystemState,
+            self.get_parameter("system_state_topic").value,
+            self._on_system_state,
+            10,
+        )
+        self.create_subscription(
+            Float64MultiArray,
+            self.get_parameter("planar_command_topic").value,
+            self._on_planar_command,
+            10,
+        )
         self.create_timer(0.05, self._watchdog)
 
     def _on_command(self, msg):
@@ -167,18 +231,46 @@ class RangerDriverBridge(Node):
         if rates is None:
             return
         now_ns = self.get_clock().now().nanoseconds
-        if (
-            self._last_odom_ns is None
-            or now_ns - self._last_odom_ns > self._odom_timeout_ns
-        ):
+        self._last_command_ns = now_ns
+        reason = self._motion_blocked(now_ns)
+        if reason is not None:
+            self._needs_zero_command = True
+        elif self._needs_zero_command:
+            if is_stop(rates):
+                self._needs_zero_command = False
+            else:
+                reason = "waiting for a zero command after the last stop"
+        if reason is not None:
             self.get_logger().warn(
-                "No recent driver odometry; holding the base still.",
-                throttle_duration_sec=2.0,
+                f"Holding the base still: {reason}.", throttle_duration_sec=2.0
             )
             self._send((0.0, 0.0, 0.0), now_ns)
             return
-        self._last_command_ns = now_ns
         self._send(driver_twist(rates, self._headings, *self._limits), now_ns)
+
+    def _motion_blocked(self, now_ns):
+        """Say why the base must not move now, or None when it may."""
+
+        def stale(stamp_ns, timeout_ns):
+            return stamp_ns is None or now_ns - stamp_ns > timeout_ns
+
+        if stale(self._last_odom_ns, self._odom_timeout_ns):
+            return "no recent driver odometry"
+        if stale(self._last_state_ns, self._state_timeout_ns):
+            return "no recent driver system state"
+        fault = system_state_fault(self._system_state, self._allowed_error_mask)
+        if fault is not None:
+            return fault
+        if stale(self._last_planar_ns, self._planar_timeout_ns):
+            return "planar_base_bridge stopped publishing"
+        return None
+
+    def _on_system_state(self, msg):
+        self._system_state = msg
+        self._last_state_ns = self.get_clock().now().nanoseconds
+
+    def _on_planar_command(self, _msg):
+        self._last_planar_ns = self.get_clock().now().nanoseconds
 
     def _send(self, twist, now_ns):
         """Publish a twist, at most once per period unless it newly stops the base."""
@@ -226,6 +318,7 @@ class RangerDriverBridge(Node):
             self._twist_pub.publish(Twist())
             self._last_publish_ns, self._last_twist = now_ns, (0.0, 0.0, 0.0)
             self._last_command_ns = None
+            self._needs_zero_command = True
             self.get_logger().warn(
                 "Joint commands stopped; sent a zero twist to the driver."
             )

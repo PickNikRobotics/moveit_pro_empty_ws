@@ -2,7 +2,7 @@
 <root BTCPP_format="4" main_tree_to_execute="Localize Robot">
   <BehaviorTree
     ID="Localize Robot"
-    _description="Place a marker where the base really is, refine AMCL without moving, and accept only a pose that fits the lidar scan. On rejection, re-publish the previous estimate. Keep the base stationary; after cancelling, run localization again."
+    _description="Align a marker with the map walls where the base really is, refine AMCL without moving, and accept only a pose that fits the lidar scan. On rejection, re-publish the previous estimate. Keep the base stationary; after cancelling, run localization again."
     _favorite="true"
   >
     <Control ID="Sequence">
@@ -33,7 +33,7 @@
       />
       <Action
         ID="AdjustPoseWithIMarker"
-        prompts="Move the marker over where the base really is, X axis forward. Height is ignored. Keep the base stationary until this Objective finishes."
+        prompts="Move the marker to where the base really is, judged against the map walls, not the robot model, which shows the current estimate. X axis forward. Height is ignored. Keep the base stationary until this Objective finishes."
         initial_poses="{marker_poses}"
         adjusted_poses="{adjusted_poses}"
       />

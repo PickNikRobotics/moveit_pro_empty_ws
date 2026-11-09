@@ -105,6 +105,15 @@ class PlanarBaseBridge(Node):
         )
 
     def _on_twist(self, msg):
+        if not all(
+            math.isfinite(v) for v in (msg.linear.x, msg.linear.y, msg.angular.z)
+        ):
+            self._twist = None
+            self.get_logger().warn(
+                "Dropped a non-finite base twist; stopping the base.",
+                throttle_duration_sec=2.0,
+            )
+            return
         self._twist = msg
         self._twist_stamp_ns = self.get_clock().now().nanoseconds
 

@@ -34,6 +34,7 @@ install(
 
 if(BUILD_TESTING)
   find_package(ament_cmake_pytest REQUIRED)
+  ament_add_pytest_test(amcl_tf_timing_test test/test_amcl_tf_timing.py TIMEOUT 60)
   ament_add_pytest_test(config_contract_test test/test_config_contract.py TIMEOUT 60)
   ament_add_pytest_test(scripts_test test/test_scripts.py TIMEOUT 60)
 endif()

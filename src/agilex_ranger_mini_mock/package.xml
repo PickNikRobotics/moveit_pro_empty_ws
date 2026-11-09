@@ -14,11 +14,14 @@
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
+  <exec_depend>ament_index_python</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>
   <exec_depend>hardware_interface</exec_depend>
   <exec_depend>joint_state_broadcaster</exec_depend>
   <exec_depend>joint_trajectory_controller</exec_depend>
   <exec_depend>joint_velocity_controller</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
   <exec_depend>moveit_pro_behavior</exec_depend>
   <exec_depend>moveit_pro_objectives</exec_depend>
   <exec_depend>moveit_studio_agent</exec_depend>
@@ -48,10 +51,16 @@
   <exec_depend>xacro</exec_depend>
 
   <test_depend>ament_cmake_pytest</test_depend>
+  <test_depend>builtin_interfaces</test_depend>
+  <test_depend>geometry_msgs</test_depend>
   <test_depend>python3-numpy</test_depend>
   <test_depend>python3-pil</test_depend>
   <test_depend>python3-pytest</test_depend>
   <test_depend>python3-yaml</test_depend>
+  <test_depend>rclpy</test_depend>
+  <test_depend>sensor_msgs</test_depend>
+  <test_depend>std_msgs</test_depend>
+  <test_depend>tf2_ros_py</test_depend>
   <test_depend>xacro</test_depend>
 
   <export>

@@ -88,39 +88,73 @@ by line. Keep each entry short, and keep it true when the code changes.
   AMCL error.
 - **Velocity.** Nav2's final twist goes to `/base_cmd_vel`, not `/cmd_vel`,
   because on hw the AgileX driver owns `/cmd_vel` before its remap.
+- **:220-238 Global costmap.** Static map and inflation only, by choice. Global
+  plans therefore route through obstacles that are not in the map; the local
+  costmap and MPPI must avoid them. The `obstacle_layer` block stays,
+  inactive, so it can be added back to `plugins`.
 
 ## src/agilex_ranger_mini_mock/objectives/localize_robot.xml
 
 - **:54-70 Prior estimate.** Capture the map-frame base pose after marker
   acceptance and before reseeding. Failure to read it stops without changing
   AMCL. No first-start fallback or simulator-frame relabel is added here.
-- **:5 Marker coordinates.** Transforming a marker from the corrected `world`
-  visualization to `map` uses the old localization correction. Place against
-  the map; placing against the displayed robot alone is not independent truth.
+- **:5, :36 Marker coordinates.** The marker starts on the displayed robot,
+  which is drawn at the current estimate, and `TransformPoseFrame` maps it back
+  to `map` through the old correction. A marker left on the model re-seeds the
+  old estimate, so the prompt asks for alignment against the map walls.
+- **:53-64 Prior estimate age.** The read lags AMCL by its transform tolerance.
+  AMCL does not update a stationary base unless asked, so the lagged
+  correction equals the current one.
 
 ## src/agilex_ranger_mini_mock/objectives/refine_localization_in_place_subtree.xml
 
-- **:9-21 Input guard.** Reject unbounded or empty loops and a disabled fit
-  gate before publishing a seed. The gate cannot be changed to report-only.
-- **:32-53 In-place updates.** Each no-motion request is followed by a new scan
+- **:12-25 Input guard.** Reject unbounded or empty loops, a disabled fit gate
+  and a tolerance the TF wait cannot cover, before publishing a seed. The gate
+  cannot be changed to report-only.
+- **:36-58 In-place updates.** Each no-motion request is followed by a new scan
   and a short processing interval. Service replies alone can collapse into one
   pending update. Scan arrival and a wait are not an AMCL acknowledgement.
-- **:60-97 Acceptance.** Require repeated fresh scans to fit the refined TF
-  estimate, never the marker seed. Pro 10.2.0's ScanMatchResidual also refuses
-  too few usable returns.
-- **:168-173 Provisional gate.** At the recorded suite_106 spawn, every usable
+- **:66-101 Acceptance.** Each check scores a fresh scan against the estimate
+  AMCL formed from that scan or later, read through
+  `Get AMCL Estimate After Scan Subtree`, never the marker seed or an older
+  correction. Pro 10.2.0's ScanMatchResidual also refuses too few returns.
+- **:176-187 Provisional gate.** At the recorded suite_106 spawn, every usable
   beam fitted the true pose and about a third fitted the incorrect estimate.
   The defaults separate that capture, but are not calibrated across the room
   or on hardware. Repeated geometry can still admit a wrong pose.
-- **:109-145 Restore.** Re-publish the pre-attempt pose and try to synchronize
-  with another scan. AMCL can alter `map -> odom` during the attempt; restore
-  is not atomic and re-seeds a new cloud rather than restoring covariance.
-- **:5 Cancellation and motion.** Keep the base stationary. A halt bypasses
+- **:188 Tolerance.** Must equal AMCL's `transform_tolerance` in
+  `params/nav2_params.yaml`; `test_amcl_tf_timing.py` checks it. A smaller
+  value would accept an older correction.
+- **:108-159 Restore.** Re-publish the pre-attempt pose, request an update and
+  wait until TF carries AMCL's estimate from after it, so the Objective fails
+  only once navigation sees the restored estimate. AMCL can alter
+  `map -> odom` during the attempt; restore is not atomic and re-seeds a new
+  cloud rather than restoring covariance.
+- **:8 Cancellation and motion.** Keep the base stationary. A halt bypasses
   the fallback, so cancellation does not restore; run localization again.
   No controller or odometry reset is performed.
-- **:23-29 Version.** Behavior IDs and ports were checked against the Pro 10.2.0
+- **:26-32 Version.** Behavior IDs and ports were checked against the Pro 10.2.0
   release source, installed headers, and the node model on Vish. The checked-out
   main worktree has an older Nav behavior set; no new C++ is needed.
+
+## src/agilex_ranger_mini_mock/objectives/get_amcl_estimate_after_scan_subtree.xml
+
+- **Why wait.** AMCL stamps each `map -> odom` at its scan's stamp plus
+  `transform_tolerance` (nav2_amcl 1.3.12, `laserReceived`). Pro 10.2.0's
+  `GetLatestTransform` reads at the latest common time, about the
+  robot_state_publisher time, so a read soon after a scan carries the
+  correction from scans one tolerance older.
+- **:28-67 Stamp check.** A read whose stamp is at least the scan stamp plus
+  the tolerance interpolates only AMCL output from that scan or later. The
+  retry polls until TF reaches that time; it does not assume the delay.
+  `test_amcl_tf_timing.py` replays AMCL-style stamps through tf2 to show both
+  reads. If AMCL stops sending, the stamp never passes and the subtree fails.
+- **:28 Retry budget.** Covers the largest tolerance the caller's guard admits,
+  plus scan latency.
+- **:36-41 Unused Transform output.** Pro 10.2.0 Unpack nodes write every
+  field, and an unmapped port defaults to `{<field>}`. Left unmapped, the
+  `transform` field would overwrite this subtree's TransformStamped `{transform}`
+  output with a Transform, and BT.CPP throws on the type change.
 
 ## src/agilex_ranger_mini_mock/scripts/planar_base_bridge.py
 
@@ -130,6 +164,12 @@ by line. Keep each entry short, and keep it true when the code changes.
   only place a body twist becomes world-frame joint rates.
 - **Timeout.** `JointGroupVelocityController` holds its last command, so the
   node sends zeros when the twist goes stale.
+- **:107 Non-finite twists.** A NaN or inf twist would integrate into the mock
+  and MuJoCo planar joints for good. The node drops it and stops the base at
+  once rather than keep the previous twist until it times out.
+- **Liveness.** If this node dies, the controller holds its last command. On
+  hw, `ranger_driver_bridge.py` watches this node's command stream and stops
+  the base. Mock and sim have no such stop.
 
 ## src/agilex_ranger_mini_mock/scripts/mock_lidar.py
 
@@ -199,8 +239,41 @@ by line. Keep each entry short, and keep it true when the code changes.
   writes it, and the topic interface forwards it. The joints xacro starts the
   commands at zero, and `driver_twist` stops the base on any NaN or inf.
 - **Speed caps.** `RangerMiniV3Params` caps only some driver modes, and its
-  turn-rate cap is above the manual's. So the bridge clamps to the URDF
-  limits of the planar joints.
+  turn-rate cap is above the manual's. So the bridge clamps to the operating
+  limits of `config/moveit/joint_limits.yaml`: planar speed to the hypotenuse
+  of the x and y limits, the turn rate to the yaw limit. Every planned, jogged
+  or Nav2 command fits; only closed-loop tracking surges, such as JTC catching
+  up after a stall, are cut. The URDF ceilings are the base's top speed.
+- **:63 System state gate.** The driver publishes `/system_state` every cycle
+  from the last CAN feedback. Motion needs a recent message reporting the
+  normal vehicle state, CAN control and no error bit outside
+  `allowed_error_mask`. The ranger_msgs and ugv_sdk enums disagree on RC and
+  standby, but agree on CAN. The default allows only the battery warning bit
+  (ugv_sdk `SYSTEM_ERROR_BATTERY_WARNING_MASK`). Whether the firmware sets RC
+  signal loss while the remote is off is UNVERIFIED; that bit stops the base.
+  Odometry and state come from cached feedback, so neither proves the CAN
+  link is alive.
+- **:198 Zero command to restart.** `planar_velocity_controller` holds its
+  last twist and JTC keeps tracking, so ros2_control repeats a moving command
+  through a stop. Without a latch the base would move again on its own when
+  an E-stop is released, the remote returns to CAN or a fault bit clears. Any
+  gate block, the command watchdog and node start set the latch. Only a
+  finite command at rounding level on every planar axis clears it. Only Nav2
+  commands pass through `planar_base_bridge.py`, which sends zero once Nav2's
+  twist times out, so a cancelled Nav2 goal clears it. IMarker teleop and
+  waypoints run on JTC, which is closed-loop and holds a residual command, so
+  they clear it only after the JTC goal is cancelled or the Objective or
+  controller is switched. Whether a released joint or pose jog sends one is
+  UNVERIFIED. Not tested on the robot.
+- **:234 Command arrival.** The command watchdog tracks valid planar messages,
+  including ones the motion gate blocks. A mode fault must not look like a
+  missing command publisher in the log.
+- **:251 Liveness gate.** `planar_velocity_controller` holds its last command
+  and the topic interface republishes it every cycle, so a dead
+  `planar_base_bridge.py` would leave Nav2's last twist on the base. The
+  bridge needs that node's command stream to be recent before it passes any
+  command, from any controller. A restart of the node alone is not taken as
+  proof the base stopped; the gate sends the zero twist.
 - **Publish period.** ros2_control writes every cycle, faster than the driver
   updates, and the driver re-selects its mode per message. The bridge passes
   at most one twist per period, stops included; only the first stop after
@@ -219,6 +292,9 @@ by line. Keep each entry short, and keep it true when the code changes.
   other key with the same leaf name.
 - **Arguments.** MoveIt Pro includes an `additional_driver_launch_file` with no
   arguments, so each setting is changed by editing its default value.
+- **:60 No lidar.** A string comparison, not a Python expression, so a path
+  with quotes cannot break or run code. Without a lidar AMCL publishes no
+  `map` frame and localization cannot pass, hence the warning.
 
 ## Dockerfile
 

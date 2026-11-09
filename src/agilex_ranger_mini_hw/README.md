@@ -47,7 +47,8 @@ a setting below, edit the `default_value` of its argument in that file.
 4. **Localize.** Do step 2 first: AMCL publishes the `map` frame only after
    its first scan. It starts at the map origin, because the odometry starts
    there at power-on, so the base first shows at the map corner. Run the
-   `Localize Robot` Objective and place the marker where the base really is.
+   `Localize Robot` Objective and align the marker with the map walls where the
+   base really is, not with the robot model.
 
 5. **Odometry noise.** The launch file raises AMCL's odometry noise to Nav2's
    default, for real wheel slip. Tune `HW_ODOM_ALPHA` in that file once the
@@ -101,9 +102,21 @@ that ignores the map. Save new waypoints only after you have driven to them.
 - **Mode switches.** The firmware ignores motion commands while it re-steers
   for a new mode, so tracking lags at each switch.
 - **Speed caps.** The driver does not cap forward or sideways speed. The
-  bridge clamps the planar speed and the turn rate to the URDF limits of the
-  planar joints.
-- **Stale odometry.** If the driver stops publishing odometry, the bridge
-  sends zero twists and warns, rather than drive on a frozen pose.
+  bridge clamps the planar speed and the turn rate to the operating limits in
+  the mock config's `config/moveit/joint_limits.yaml`, below the URDF limits.
+- **Motion gate.** The bridge sends zero twists and warns, rather than pass a
+  command, when the driver's odometry or `/system_state` is not recent, when
+  the base reports E-stop, an exception, a control mode other than CAN or an
+  error bit other than the battery warning, or when `planar_base_bridge.py`
+  stops publishing. That last case stops every controller, because
+  `planar_velocity_controller` would otherwise hold its last command. The
+  gate only reads what the driver reports; it is untested on the robot.
+- **Restart after a stop.** After any gate block, a command timeout or a
+  bridge start, the base stays still until a controller sends a zero command.
+  A held teleop or Nav2 command does not restart the base when an E-stop is
+  released or the remote returns to CAN. For Nav2, cancel the goal. For
+  IMarker teleop or a waypoint move, cancel the motion or stop the Objective,
+  or switch the controller. Whether releasing a joint or pose jog restarts
+  the base is unverified. Untested on the robot.
 - **Wheel joints.** The driver reports no steering or wheel angles, so those
   joints stay at zero in the UI.
